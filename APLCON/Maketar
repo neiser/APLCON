@@ -1,6 +1,0 @@
-#! /bin/sh
-# make complete version of aplcon library
-tar -czf aplcon1.tgz Makefile Maketar *.F  *.inc \
-manual/aplcon_model.txt manual/mini_model.txt test
-#! /bin/zsh
-
