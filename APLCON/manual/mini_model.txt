@@ -1,0 +1,40 @@
+
+*     minimum version of aplcon_model.text
+
+      PARAMETER (NVARX=200,NEQSX=100)              ! max dimensions
+      PARAMETER (NSYMX=(NVARX*NVARX+NVARX)/2)
+      DOUBLE PRECISION X(NVARX),VX(NSYMX),F(NEQSX) ! user arrays         
+     
+*     __________________________________________________________________
+*     (1) Preparation __________________________________________________
+*     Definition of dimensions parameters: NVAR = number of variables
+*                                          NEQS = number of constraints 
+*     and assignment of numerical values to X(.) and VX(.). 
+
+      NVAR =                                     ! number of variables
+      NEQS =                                     ! number of constraints
+      CALL APLCON(NVAR,NEQS)                     ! initialization
+      CALL APRINT(6,6)                           ! print option
+
+      DO I=1,IJSYM(NVAR,NVAR) 
+       VX(I)=0.0D0                                ! reset matrix VX(.)
+      END DO 
+
+*     X(index) =                                  ! measured variable
+*     VX(IJSYM(index,jndex)) =                    ! variance, covariance
+
+*     __________________________________________________________________
+*     (3) Fit loop _____________________________________________________
+*     The constraint equations have to be evaluated in DOUBLE precision!
+*     The variables are internally modified until all values F(.) are 
+*     small, and the chi-square of the modifications is minimal.   
+
+c     CALL APXOPT(X,VX)             ! initial value of variables             
+
+ 10   CONTINUE
+*     F(.) = values of NEQS constraint equations = functions of X(.) 
+
+      CALL APLOOP(X,VX,F, IREP)
+      IF(IREP.LT.0) GOTO 10
+*     __________________________________________________________________
+

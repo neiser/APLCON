@@ -1,0 +1,132 @@
+
+*         use/modify
+*     * = comment
+*     c = to bemodified, if used   
+
+      PARAMETER (NVARX=200,NEQSX=100)              ! max dimensions
+      PARAMETER (NSYMX=(NVARX*NVARX+NVARX)/2)
+      DOUBLE PRECISION X(NVARX),VX(NSYMX),F(NEQSX) ! user arrays         
+     
+*     __________________________________________________________________
+*     (1) Preparation __________________________________________________
+*     Definition of dimensions parameters: NVAR = number of variables
+*                                          NEQS = number of constraints 
+*     and assignment of numerical values to X(.) and VX(.). 
+
+      NVAR =                                     ! number of variables
+      NEQS =                                     ! number of constraints
+      CALL APLCON(NVAR,NEQS)                     ! initialization
+      LUNP = 6                                   ! print unit
+      IPR  = 6                                   ! print level
+      CALL APRINT(LUNP,IPR)                      ! print option
+
+*     Print levels: IPR=0  quiet  IPR=1 =2 =3 for minimal printout 
+*                   IPR=4  iterations and result
+*                   IPR=5  iterations and result with correlation matrix
+*                   IPR=6  IPR=7  with debug output (derivatives, ...)        
+
+
+*     X(.)  = variables (measured and unmeasured),
+*     VX(.) = covariance matrix elements 
+
+      DO I=1,IJSYM(NVAR,NVAR) 
+       VX(I)=0.0D0                                ! reset matrix VX(.)
+      END DO 
+
+*     X(index) =                                  ! measured variable
+*     VX(IJSYM(index,jndex)) =                    ! variance, covariance
+      X( ) = 
+      VX(IJSYM( , )) = 
+*     IJSYM(i,j) is a function, that returns the "linear" index for the
+*     matrix element (i,j) in the symmetric storage mode with total
+*     NSYMX = (NVARX*NVARX+NVARX)/2 elements for NVAR variables
+
+*     __________________________________________________________________
+*     (2) Optional definitions and selections __________________________
+*     In general no optional definition or selection is necessary. 
+
+*     Optional: assignment of variable_names
+
+c      CALL APNAME(index,'name of variable')
+
+*     Optional: assignment of p.d.f. type for variables, if not gaussian
+
+c      CALL APOISS(index)               ! Poisson distributed
+c      CALL APLOGN(index)               ! Lognormal distr.
+c      CALL APSQRT(index)               ! sqrt transformation
+
+*     Optional: range of variables - not implemented
+*   [ CALL APLIMT(index,XLOW,XHIG)      ! range of variable ]
+
+*     Optional: assignment of (double precision) step size for variables
+*     (this is in general not necessray; the step size is defined
+*     automatically and optimized during the fit).  
+
+c      CALL APSTEP(index,step_size)                
+
+*     If a zero step size is assigned, then the variable is fixed during
+*     the fit.
+
+c      CALL APSTEP(index,0.0D0)        ! X(index) fixed
+
+*     Optional selection of profile analysis for selected single
+*     variables of for variable pairs:
+ 
+c      CALL APORFL(index, 0)           ! single variable
+c      CALL APROFL(index,jndex)        ! pair of variables
+
+*     Optional assigment of parameters for fit algorithmus
+
+*     EPSIL   = 1.0D-6                 ! default value
+c     CALL APDEPS(EPSIL)               ! constraint accuracy
+
+*     ITEMAX  = 100                    ! default value
+c     CALL APITER(ITEMAX)              ! max number of iterations
+
+*     STEP(i) =  1.0D-3 * SIGMA(i) for measured X(i)
+*             =  1.0D-5 * MAX(1, |X(i)|) initially for unmeasured X(i)
+*             =< 1.0D-2 * |X(i)|  
+*     DERFAC  =  1.0D-3  default value for stepsize factor (measured)    
+*             =  1.0D-5  default value stepsize factor (unmeasured)
+*             =  1.0D-2  default value for upper stepsize factor limit
+c     CALL APDERF(DERFAC)              ! factor for stepsize (measured) 
+c     CALL APDERU(DERFAC)              ! factor for stepsize (unmeasured)
+c     CALL APDLOW(DERFAC)              ! factor for lower stepsize limit
+
+*     __________________________________________________________________
+*     (3) Fit loop _____________________________________________________
+*     The constraint equations have to be evaluated in DOUBLE precision!
+*     The variables are internally modified until all values F(.) are 
+*     small, and the chi-square of the modifications is minimal.   
+
+*     The assigned numerical values of variables and of the covariance
+*     matrix (before the fit) are printed by the call:
+
+c     CALL APXOPT(X,VX)             ! initial value of variables             
+c     CALL CFCORR(LUP,VX,NVAR)      ! correlation matrix 
+
+ 10   CONTINUE
+*     F(.) = values of NEQS constraint equations = functions of X(.) 
+c     F( ) = 
+
+      CALL APLOOP(X,VX,F, IREP)
+      IF(IREP.LT.0) GOTO 10
+
+*     IREP < 0   continue (i.e. loop)
+*     IREP = 0   convergence: final values assignerd to X(.) and VX(.)
+*     IREP > 0   error or no convergence
+
+*     __________________________________________________________________ 
+*     (4) Post processing (optional) ___________________________________
+*     The complete result or a subset of the result is printed.
+
+c     CALL CFPRV(LUN,X,VX,NX)         ! print X and VX on unit LUN  
+c     CALL CFCORR(LUN,VX,NVAR)        ! priint correlation matrix 
+
+*     selection of subset Y, VY of variables from X, VX
+c     LIST(.) =  integer array of indices, to be selected.
+c     CALL SIMSEL(X,VX,NY,LIST,Y,VY)  ! X, VX => Y, VY
+c     CALL CFPRV(LUN,Y,VY,NU)         ! print X and VX on unit LUN 
+
+*     __________________________________________________________________
+

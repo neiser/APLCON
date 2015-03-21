@@ -1,0 +1,11 @@
+Uncorrelated measurement
+1.0  0.0  9.0 0.0 0.0 9.0 0.0  0.0  0.0 9.0
+Positive 15% correlation (same observable)
+1.0  0.45 9.0 0.0 0.0 9.0 0.0  0.0  0.0 9.0
+Negative 15% correlation (same observable)
+1.0 -0.45 9.0 0.0 0.0 9.0 0.0  0.0  0.0 9.0
+Positive correlations (different observables)
+1.0  0.0  9.0 0.0 0.0 9.0 0.0  8.96 0.0 9.0
+Positive correlations (different observables)
+1.0  0.0  9.0 0.0 0.0 9.0 0.0 -8.96 0.0 9.0
+
