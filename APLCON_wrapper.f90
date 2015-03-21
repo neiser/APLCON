@@ -19,14 +19,25 @@ contains
   end function c_to_f_string
 
   subroutine C_APLCON_APLCON(NVAR,MCST) bind(c)
-    integer(c_int), value :: NVAR, MCST
+    integer(c_int), value, intent(in) :: NVAR, MCST
     CALL APLCON(NVAR,MCST)
   end subroutine C_APLCON_APLCON
 
+  subroutine C_APLCON_APRINT(LUNP,IPR) bind(c)
+    integer(c_int), value, intent(in) :: LUNP, IPR
+    CALL APRINT(LUNP,IPR)
+  end subroutine C_APLCON_APRINT
+  
   subroutine C_APLCON_APNAME(I,NAME) bind(c)
-    integer(c_int), value :: I
+    integer(c_int), value, intent(in) :: I
     character(kind=c_char,len=1), intent(in) :: NAME(*)
     CALL APNAME(I,NAME)
   end subroutine C_APLCON_APNAME
+
+  subroutine C_APLCON_CIPRV(LUP,X,VX,N) bind(c)
+    integer(c_int), value, intent(in) :: LUP, N
+    real(c_double), dimension(*), intent(in) :: X, VX    
+    CALL CIPRV(LUP,X,VX,N)
+  end subroutine C_APLCON_CIPRV
 
 end module APLCON_wrapper
