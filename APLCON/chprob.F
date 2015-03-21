@@ -18,7 +18,7 @@
 *     incomplete gamma function P(a,x)
 *     returns -1.0 for x < 0 or a =< 0
       IMPLICIT NONE
-      DOUBLE PRECISION A,DGAMIN,X,EPS,FPMIN 
+      DOUBLE PRECISION A,X,EPS,FPMIN
       INTEGER ITMAX,I,N
       PARAMETER (ITMAX=300,EPS=3.0E-7,FPMIN=1.0E-30)
       DOUBLE PRECISION AN,AP,B,C,D,DEL,H,SUM,DGAMML,GLN
