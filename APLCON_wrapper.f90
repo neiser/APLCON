@@ -31,7 +31,7 @@ contains
   subroutine C_APLCON_APNAME(I,NAME) bind(c)
     integer(c_int), value, intent(in) :: I
     character(kind=c_char,len=1), intent(in) :: NAME(*)
-    CALL APNAME(I,NAME)
+    CALL APNAME(I,c_to_f_string(NAME))
   end subroutine C_APLCON_APNAME
 
   subroutine C_APLCON_CIPRV(LUP,X,VX,N) bind(c)
