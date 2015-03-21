@@ -40,4 +40,10 @@ contains
     CALL CIPRV(LUP,X,VX,N)
   end subroutine C_APLCON_CIPRV
 
+  subroutine C_APLCON_CFCORR(LUP,V,N) bind(c)
+    integer(c_int), value, intent(in) :: LUP, N
+    real(c_double), dimension(*), intent(in) :: V
+    CALL CFCORR(LUP,V,N)
+  end subroutine C_APLCON_CFCORR
+
 end module APLCON_wrapper

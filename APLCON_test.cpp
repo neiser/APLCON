@@ -20,5 +20,5 @@ int main() {
 	c_aplcon_apname(3,"BR to tau (A)");
 	c_aplcon_apname(4,"BR to tau (B)");
 	c_aplcon_ciprv(LUP,X.data(),V.data(),NVAR); //print initial status
-
+	c_aplcon_cfcorr(LUP,V.data(),NVAR);
 }
