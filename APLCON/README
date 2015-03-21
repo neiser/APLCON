@@ -1,0 +1,299 @@
+
+
+To extract into actual directory: tar -xzf aplcon0.tgz
+
+Compile test program: g77 taplcon0.F condfit.F condutil.F
+                  or: gfortran taplcon0.F condfit.F condutil.F
+   and then run a.out
+
+
+                           APLCON manual
+                          ===============  
+
+1. Introduction
+---------------
+
+APLCON is a fit program based on "constraint equations". 
+
+Variables of two types are distinguished:
+   o  measured variables, with a measured value, stored by the user 
+      in the variable array X(.), and an uncertainty, expressed
+      by a variance and optionally covariances to other parameters. These
+      elements of the covariance matrix of the measured variables have 
+      to be stored by the user in the matrix-array V(.) before the fit;
+   o  unmeasured variables, or fit parameters, which are not directly
+      measured; through constraint equations (with sufficient rank) they
+      become defined. By convention they are treated like the other 
+      measured) variables and the user has to store a reasonable 
+      approximate value in the variable-array X(.). By convention their
+      variance in the matrix-array V(.) has to be zero.
+
+The variables (measured and unmeasured) are in array X(NVAR) for all NVAR
+variables. The elements of the covariance matrix of the measured variables
+are in the matrix-array V(.).
+
+The user has to provide statements of the form
+      F(i) = function of X(.) ...
+for the equality constraints to calculate the values F(i) for the current
+values of variables X(.). These statements are evaluated repeatedly in a
+loop during the fit. Convergence is reached for sufficiently small values
+of the equality constraint values F(i). 
+
+All arrays
+      X(.) = variables (measured and unmeasured),
+      V(.) = covarinace matrix elements, and
+      F(.) = values of constraint equations
+are in double precision. A high accuracy, with all calculations in double
+precision, is necessary for the calculation of the equality constraint
+values F(i); this accuracy is required, because the derivative calculation
+during the fit determines first derivatives of the constraint equations
+w.r.t. to the variables from finite differences.
+
+The matrix elements are stored in symmetric storage mode, according to 
+the schema            j=
+                    1  2  3
+                  +--------...
+                 1| 1 
+                 2| 2  3            index = IJSYM(I,J)
+              i= 3| 4  5  6
+                 4| 7      ... 
+               
+For example the element with index pair (I,J) = (3,2) is stored in the 
+array element with index 5. The utility function IJSYM(I,J) can be used
+to obtaind the index: IJSYM(3,2) and IJSYM(2,3) will return value 5.
+The total size of the matrix array for a NVAR-by-NVAR symmetric matrix
+can be calculated by IJSYM(NVAR,NVAR), which is (NVAR*NVAR+NVAR)/2. 
+In all calculation with the symmetric matrix the symmetry property is
+used to reduce the amount of computation. 
+
+At convergence the fitted variables values for measured and unmeasured
+variables are stored in the variable-array X(.), and the corresponding
+covariance matrix of all variables is stored in the matrix-array V(.).  
+
+
+
+2. Initialization
+-----------------
+
+The dimension parameters are required to initialize the program.
+
+      NVAR = number of variables
+
+      NEQS = number of constraint equations
+
+      CALL APLCON(NVAR,NEQS)   
+
+Optionally the user can set names (up to 16 chars) for the variables
+(for up to 128 variables): to set the variable name for X(index) 
+      CALL APNAME(index, text for name)
+      ...
+
+
+3. Declaration and definition of user arrays
+--------------------------------------------
+
+There are three user arrays:
+ X(NVAR) = array of all (measured and unmeasured) variables
+ V(NSYM) = array for symmetric NVAR-by-NVAR matrix with dimension NSYM
+ F(NEQS) = array for current values of constraint equations
+
+The three arrays have to be declared as double precision arrays of 
+sufficient dimension. 
+
+For a measured variable with index the element X(index) has to be 
+set to the measured value, and the corresponding elements of the 
+matrix array V(...) have be be set to the covariabe matrix elements.
+For unmeasured variables with index the element X(index) has to be 
+set to an approximate value (used as start value in the fit), and 
+the corresponding elements of the matrix array V(...) have to be set
+to zero.
+
+Example for initialization, and declaration and definition of arrays:
+
+      PARAMETER (NVAR=3, NEQS=1)
+      DOUBLE PRECISION X(NVAR),V((NAVR*NVAR+NVAR)/2),F(NEQS)
+      DO I=1,IJSYM(NVAR,NVAR)
+       V(I)=0.0D0
+      END DO
+      X(1)= ... (measured value)
+      X(2)= ... (measured value)
+      X(3)= ... (unmeasured, approximate value)
+      V(IJSYM(1,1))= ...
+      V(IJSYM(1,2))= ...
+      V(IJSYM(2,2))= ...
+      CALL APLCON(NVAR,NEQS)
+      
+4. Fit loop with evaluation of constraints
+
+The fit requires the repeated evaluation of all constraint equations
+F(1) ... F(NEQS). After the calculation of the values of all equations
+with the current values of the variables X(1) ... X(NVAR) the subr.
+APLOOP has to be called with the arrays X, V and F. If the returned
+value of the flag IREP is < 0, the calculation has to be repeated. 
+
+ 10   F(1)= ... (function of X(1) ... X(NVAR))
+      ...
+      CALL APLOOP(X,V,X, IREP)
+      IF(IREP.LT.0) GOTO 10
+
+Within the loop all necessary derivatives of the constraint equations
+are determined numerically; when all derivatives are ready, a step
+in parameter space is determined by matrix operations. This sequence
+is repeated until convergence.
+
+After convergence (with value IREP= ) the array X(.) contains the final
+fitted variable values and the array V(.) the corresponding covariance
+matrix elements. 
+
+      IREP < 0   continue
+      IREP = 0   convergence
+      IREP = 1   no convergence:
+      IREP = 2   no convergence: too many iterations
+      IREP = 3   no convergence: unphysical parameter values
+      IREP = 4   no convergence: < 0 degrees of freedom
+      IREP = 5   no convergence: insufficient storage 
+
+
+5. Fixed variables and variable transformations
+
+Variables, i.e. elements of the array X(.), can be treated as fixed
+by the call
+      CALL APSTEP(I,0.0D0)                 ! treat V(I) as fixed 
+
+By default variables are treated in the least squares sense
+with variances and covariances given by the elements of the matrix
+array VX(.). Variables with variance element (diagonal element V(i,i)
+in the matrix array VX(.)) equal to zero are treated as unmeasured
+variables. 
+
+Variables can also be treated as
+   o  Poisson-distributed variables: counts (integers) follow the Poisson 
+      distribution; the variance is equal to the expected count and this
+      is taken into account by a dynamic change if the variance during
+      the iterative solution.       
+
+   o  Log-normal distributed variables: variables with uncertainties 
+      given as a relative number (e.g. percentage) follow a log-normal
+      distribution. The original variable is transformed to the log,
+      and the log, which should follow the normal distrinbution, is
+      treated in the fit.
+
+      CALL APOISS(I)                   ! Poisson distributed variable
+      CALL APLOGN(I)                   ! Lognormal distributed variable
+      CALL APSQRT(I)                   ! sqrt transformed variable
+
+6. Optional calls
+
+Between the APLCON-call and the loop the user may change certain
+default parameters by calls.
+
+      CALL APRINT(LUNP,IPR)            ! set print option
+      CALL APDEPS(EPSIL)               ! constraint accuracy
+      CALL APITER(ITEMAX)              ! max number of iterations
+      CALL APDERF(DERFAC)              ! factor for stepsize (measured) 
+      CALL APDERU(DERFAC)              ! factor for stepsize (unmeasured)
+      CALL APDLOW(DERFAC)              ! factor for lower stepsize limit
+      CALL APSTEP(IA,STEP)             ! step size for numerical diff.
+    [ CALL APLIMT(IA,XLOW,XHIG)        ! range of variable X(IA) ]
+
+
+LUNP    = 6       default print unit
+JDEBUG  = 0       no printout
+        = 1       minimum printout
+        = 2
+        = 3
+        = 4  
+EPSIL   = 1.0D-6  default value
+ITEMAX  = 100     default value
+DERFAC  = 1.0D-3  default value for stepsize (measured)    
+        = 1.0D-5  default value stepsize (unmeasured)
+        = 1.0D-2  default value for lower stepsize limit
+STEP(i) = 1.0D-3 * SIGMA(i) for measured X(i)
+        = 1.0D-5 * MAX(1, |X(i)|) initially for unmeasured X(i)
+        =< 1.0D-2 * |X(i)|  
+
+7. Printout
+
+The vector X(.) of variables and the covariance  matrix VX(.) are printed
+(on  unit 6) by
+
+      CALL CFPRV(6,X,VX,NX) 
+
+
+8. Variable reduction
+
+Variables from a vector X(.) and a covariance matrix VX(.) can be 
+selected or reordered, and the selected or reordered variables can
+be stored in a vector Y(.) and a covariance matrix VY(.)
+
+      CALL SIMSEL(X,VX,NY,LIST,Y,VY)
+where
+      LIST(.) - integer array of indices, to be selected.
+
+For example
+if X(.) variables 1,3 and 7 have to be selected, the code would be
+
+      LIST(1)=1
+      LIST(2)=3
+      LIST(3)=7
+      NY=3
+      CALL SIMSEL(X,VX,NY,LIST,Y,VY)
+      CALL CFPRV(6,Y,VY,NY) 
+
+
+9. Normalization factor
+
+A normalization factor 1 +- epsilon is extracted from a vector X(.)
+and a covariance matrix VX(.) by SIMTR, and added as a N+1-st variable.
+
+      CALL SIMTRN(X,VX,NX)       ! extract normalization factor
+      CALL CFPRV(6,X,VX,NX+1)    ! print result (on unit 6)
+
+ 
+10. Propagation of uncertainties
+
+The package can also be used for the propagation of uncertainties.
+It is assumed that variables X(.) with covariance matrix VX(.) exist,
+and a transformation to new variables Y(.) is done. The covariance matrix
+VY(.) of the transformed variables Y(.) = Y(X) can be calculated using
+the first derivatives of Y(.) w.r.t. X(.). This calculation is done with
+the following code:
+
+
+ 10   Y(1)= ... (function of X(1) ... X(NVAR))
+      ...
+      CALL APROPA(X,VX,Y,VY, IREP)
+      IF(IREP.LT.0) GOTO 10
+    
+
+
+Appendix A: List of subprograms
+
+      SUBROUTINE APLCON(NVAR,MCST)         ! dimension parameters
+      SUBROUTINE APLOOP(X,VX,F, IRET)      ! steering routine for loop
+      SUBROUTINE APROPA(X,VX,Y,VY, IRET)   ! error propagation Y = Y(X)
+
+      SUBROUTINE IPLMAT(X,VX,A,ST)         ! check derivative matrix
+      SUBROUTINE IPLDER(X,F, A,ST,XL,FC,HH, JRET) ! derivative calculation
+      SUBROUTINE IPLCON(X,VX,F, AUX,IRET)  ! internal steering routine
+      SUBROUTINE JPLCON(X,VX,F, AUX,XS,DX,XP,R,W,DIAG,IRET) ! internal
+
+
+Appendix B: Print flag
+
+The default value of the print flag is IPR=5
+              
+                   IPR=0  =1  =2  =3  =4  =5  =6  =7 
+                   _________________________________  
+Program title                      x   x   x   x   x
+Program parameters                     x   x   x   x
+
+Stop conditions            x   x   x   x   x   x   x
+Error conditions               x   x   x   x   x   x
+Program exit                       x   x   x   x   x
+Iterations                             x   x   x   x
+Final vector + err.                    x   x   x   x
+Correlation matrix                         x   x   x
+Derivative matrix                              x   x
+Debug                                              x
+
