@@ -46,4 +46,16 @@ contains
     CALL CFCORR(LUP,V,N)
   end subroutine C_APLCON_CFCORR
 
+  subroutine C_APLCON_APROFL(I1,I2) bind(c)
+    integer(c_int), value, intent(in) :: I1, I2
+    CALL APROFL(I1,I2)
+  end subroutine C_APLCON_APROFL
+
+  subroutine C_APLCON_APLOOP(X,VX,F,IRET) bind(c)
+    real(c_double), dimension(*), intent(inout) :: X,VX,F
+    integer(c_int), intent(out) :: IRET
+    CALL APLOOP(X,VX,F,IRET)
+  end subroutine C_APLCON_APLOOP
+
+  
 end module APLCON_wrapper
