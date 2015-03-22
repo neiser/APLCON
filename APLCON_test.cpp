@@ -11,7 +11,7 @@ int main() {
 	vector<double> X = {0.1050, 0.1350, 0.0950, 0.1400};
 	vector<double> V = {1.0e-4, 0.0e-4, 9.0e-4, 0.0e-4, 0.0e-4, 9.0e-4, 0.0e-4,  0.0e-4,  0.0e-4, 9.0e-4};
 	vector<double> F(2);
-	
+
 	int NVAR = 4;
 	int NEQS = 2;
 	c_aplcon_aplcon(NVAR,NEQS);
@@ -34,4 +34,13 @@ int main() {
 		c_aplcon_aploop(X.data(), V.data(), F.data(), &IRET);
 	}
 	while(IRET<0);
+
+	float chi2, pval;
+	int ndof;
+	c_aplcon_chndpv(&chi2,&ndof,&pval);
+	cout <<  "Chi2 = " << chi2
+	     << " NDF = " << ndof
+	     << " pval = " << pval
+	     << endl;
+
 }
