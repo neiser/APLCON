@@ -6,5 +6,12 @@ add_subdirectory(APLCON)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include_directories(.)
-add_executable(APLCON_test APLCON_test.cpp APLCON_wrapper.f90)
+
+add_executable(APLCON_test APLCON_test.cc APLCON_wrapper.f90)
 target_link_libraries(APLCON_test aplcon)
+
+add_library(kinfit KinFit.cc KinFit.h)
+target_link_libraries(kinfit aplcon)
+
+add_executable(kinfit_test KinFit_test.cc)
+target_link_libraries(kinfit_test kinfit)
