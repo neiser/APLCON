@@ -21,6 +21,12 @@ contains
     CALL CHNDPV(CHI2,ND,PVAL)
   end subroutine C_APLCON_CHNDPV
 
+  subroutine C_APLCON_APSTAT(FOPT,NFUN,NITER) bind(c)
+    real(c_double), intent(out) :: FOPT
+    integer(c_int), intent(out) :: NFUN, NITER
+    CALL APSTAT(FOPT,NFUN,NITER)
+  end subroutine C_APLCON_APSTAT
+
   subroutine C_APLCON_SIMSEL(X,VX,NY,LIST,Y,VY) bind(c)
     real(c_double), dimension(*), intent(in) :: X,VX,LIST
     integer(c_int), value, intent(in) :: NY

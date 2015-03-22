@@ -36,11 +36,17 @@ int main() {
 	while(IRET<0);
 
 	float chi2, pval;
-	int ndof;
+	double fopt;
+	int ndof, nfun, niter;
 	c_aplcon_chndpv(&chi2,&ndof,&pval);
+	c_aplcon_apstat(&fopt,&nfun,&niter);
+
 	cout <<  "Chi2 = " << chi2
 	     << " NDF = " << ndof
 	     << " pval = " << pval
+	     << " Fopt = " << fopt
+	     << " nFun = " << nfun
+	     << " nIter = " << niter
 	     << endl;
 
 }
