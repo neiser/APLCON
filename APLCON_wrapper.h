@@ -10,7 +10,6 @@ void c_aplcon_simsel(const double X[], const double VX[], const int NY, const in
 void c_aplcon_simtrn(double X[], double VX[], const int NX);
 
 // printout related routines (useful for debugging)
-void c_aplcon_apname(const int I, const char* NAME);
 void c_aplcon_ciprv(const int LUP, const double X[], const double VX[], const int N);
 void c_aplcon_cfprv(const int LUP, const double X[], const double VX[], const int N);
 void c_aplcon_cfcorr(const int LUP, const double V[], const int N);

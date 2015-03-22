@@ -41,12 +41,6 @@ contains
   end subroutine C_APLCON_SIMTRN
 
   ! printout related routines (useful for debugging)
-  subroutine C_APLCON_APNAME(I,NAME) bind(c)
-    integer(c_int), value, intent(in) :: I
-    character(kind=c_char,len=1), intent(in) :: NAME(*)
-    CALL APNAME(I,c_to_f_string(NAME))
-  end subroutine C_APLCON_APNAME
-
   subroutine C_APLCON_CIPRV(LUP,X,VX,N) bind(c)
     integer(c_int), value, intent(in) :: LUP, N
     real(c_double), dimension(*), intent(in) :: X, VX
@@ -154,20 +148,5 @@ contains
     integer(c_int), value, intent(in) :: I
     CALL APOSIT(I)
   end subroutine C_APLCON_APOSIT
-
-  ! helper function to convert c string to fortran string
-  function c_to_f_string(s) result(str)
-    character(kind=c_char,len=1), intent(in) :: s(*)
-    character(len=:), allocatable :: str
-    integer i, nchars
-    i = 1
-    do
-       if (s(i) == c_null_char) exit
-       i = i + 1
-    end do
-    nchars = i - 1  ! Exclude null character from Fortran string
-    allocate(character(len=nchars) :: str)
-    str = transfer(s(1:nchars), str)
-  end function c_to_f_string
 
 end module APLCON_wrapper
