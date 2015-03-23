@@ -51,7 +51,7 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
               );
 }
 
-void KinFit::AddConstraint(const string &name, const constraint_t &constraint)
+/*void KinFit::AddConstraint(const string &name, const constraint_t &constraint)
 {
   // check if variable already exists
   if(constraints.find(name) != constraints.end()) {
@@ -59,7 +59,7 @@ void KinFit::AddConstraint(const string &name, const constraint_t &constraint)
   }
   constraints[name] = constraint;
   initialized = false;
-}
+}*/
 
 KinFit::Result_t KinFit::DoFit()
 {
@@ -67,12 +67,17 @@ KinFit::Result_t KinFit::DoFit()
   Init();
   // build the initial values vector
   vector<double> values(variables.size());
-
-
+  auto it1 = variables.begin();
+  auto it2 = values.begin();
+  for(; it1 != variables.end() && it2 != values.end();  ++it1, ++it2) {
+    *it2 = it1->second;
+  }
   int IRET = -1;
   do {
-    // calculate the
-
+    // evaluate the constraints
+    //vector<double> evals(constraints.size());
+    //auto it3 = constraints.begin();
+    //auto it4 = evals.begin();
     //c_aplcon_aploop(values.data(), covariances.data(), F.data(), &IRET);
   }
   while(IRET<0);
@@ -84,7 +89,7 @@ void KinFit::Init()
     return;
 
   // tell APLCON the number of variables and the number of constraints
-  c_aplcon_aplcon(variables.size(), constraints.size());
+  //c_aplcon_aplcon(variables.size(), constraints.size());
 
   initialized = true;
 }
