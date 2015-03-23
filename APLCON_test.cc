@@ -34,9 +34,11 @@ int main() {
 	float chi2, pval;
 	double fopt;
 	int ndof, nfun, niter;
+  vector<double> pulls(X.size());
 	c_aplcon_chndpv(&chi2,&ndof,&pval);
 	c_aplcon_apstat(&fopt,&nfun,&niter);
-
+  c_aplcon_appull(pulls.data());
+  
 	cout <<  "Chi2 = " << chi2
 	     << " NDF = " << ndof
 	     << " pval = " << pval
@@ -44,5 +46,9 @@ int main() {
 	     << " nFun = " << nfun
 	     << " nIter = " << niter
 	     << endl;
+  
+  for(auto p : pulls) {
+    cout << p << endl;
+  }
 
 }

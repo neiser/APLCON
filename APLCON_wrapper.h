@@ -4,8 +4,13 @@
 // main routines
 void c_aplcon_aplcon(const int NVAR, const int MCST);
 void c_aplcon_aploop(double X[], double VX[], double F[], int* IRET);
+
+// routines to obtain results
 void c_aplcon_chndpv(float* CHI2, int* ND, float* pval);
 void c_aplcon_apstat(double* FOPT, int* NFUN, int* NITER);
+void c_aplcon_appull(double* PULLS);
+
+// variable reduction
 void c_aplcon_simsel(const double X[], const double VX[], const int NY, const int LIST[], double Y[], double VY[]);
 void c_aplcon_simtrn(double X[], double VX[], const int NX);
 

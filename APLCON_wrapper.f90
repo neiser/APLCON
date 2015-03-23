@@ -15,6 +15,7 @@ contains
     CALL APLOOP(X,VX,F,IRET)
   end subroutine C_APLCON_APLOOP
 
+  ! routines to obtain results
   subroutine C_APLCON_CHNDPV(CHI2,ND,PVAL) bind(c)
     real(c_float), intent(out) :: CHI2,PVAL
     integer(c_int), intent(out) :: ND
@@ -27,6 +28,12 @@ contains
     CALL APSTAT(FOPT,NFUN,NITER)
   end subroutine C_APLCON_APSTAT
 
+  subroutine C_APLCON_APPULL(PULLS) bind(c)
+    real(c_double), dimension(*), intent(out) :: PULLS
+    CALL APPULL(PULLS)
+  end subroutine C_APLCON_APPULL
+
+  ! variable reduction
   subroutine C_APLCON_SIMSEL(X,VX,NY,LIST,Y,VY) bind(c)
     real(c_double), dimension(*), intent(in) :: X,VX,LIST
     integer(c_int), value, intent(in) :: NY
