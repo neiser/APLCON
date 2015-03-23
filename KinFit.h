@@ -73,7 +73,7 @@ public:
   // constraints are functions of the input variables. Should return 0.0 if fulfilled.
   typedef std::function<double (const std::map<std::string, double>&)> constraint_t;
 
-  void AddConstraint(const std::string& name,  constraint_t constraint);
+  void AddConstraint(const std::string& name, const constraint_t& constraint);
 
   void UpdateValues(const std::map<std::string, double>& values);
   void UpdateSigmas(const std::map<std::string, double>& sigmas);
@@ -111,7 +111,7 @@ private:
   // represents the symmetric covariance matrix
   std::vector<double> covariances;
    // the constraints as C++11 lambdas
-  std::vector<constraint_t> constraints;
+  std::map<std::string, constraint_t> constraints;
   // step sizes for numerical evaluation (zero if fixed, NaN if APLCON default)
   std::vector<double> stepSizes;
   bool initialized;

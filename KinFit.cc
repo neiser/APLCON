@@ -45,9 +45,19 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
   // fixed variables have stepSize of 0
   // and limits don't apply
   AddVariable(name, value, sigma, distribution,
-              std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+              std::numeric_limits<double>::quiet_NaN(),
+              std::numeric_limits<double>::quiet_NaN(),
               0
               );
+}
+
+void KinFit::AddConstraint(const string &name, const constraint_t &constraint)
+{
+  // check if variable already exists
+  if(constraints.find(name) != constraints.end()) {
+    throw logic_error("Constraint already added");
+  }
+  constraints[name] = constraint;
 }
 
 void KinFit::AddVariable(const string &name, const double value, const double sigma,
