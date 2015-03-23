@@ -15,7 +15,7 @@
 class KinFit
 {
 public:
-  KinFit() {}
+  KinFit() : initialized(false) {}
   ~KinFit() {}
 
   enum class Distribution_t {
@@ -24,6 +24,8 @@ public:
     LogNormal,
     SquareRoot
   };
+
+  typedef std::map<std::string, double> map_t;
 
   /**
    * @brief AddMeasuredVariable
@@ -114,13 +116,16 @@ private:
   std::map<std::string, constraint_t> constraints;
   // step sizes for numerical evaluation (zero if fixed, NaN if APLCON default)
   std::vector<double> stepSizes;
+
   bool initialized;
+  void Init();
 
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const Distribution_t distribution,
                    const double lowerLimit, const double upperLimit,
                    const double stepSize
       );
+
 };
 
 #endif // KINFIT_H

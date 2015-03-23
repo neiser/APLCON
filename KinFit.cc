@@ -58,6 +58,35 @@ void KinFit::AddConstraint(const string &name, const constraint_t &constraint)
     throw logic_error("Constraint already added");
   }
   constraints[name] = constraint;
+  initialized = false;
+}
+
+KinFit::Result_t KinFit::DoFit()
+{
+  // ensure that APLCON is properly initialized
+  Init();
+  // build the initial values vector
+  vector<double> values(variables.size());
+
+
+  int IRET = -1;
+  do {
+    // calculate the
+
+    //c_aplcon_aploop(values.data(), covariances.data(), F.data(), &IRET);
+  }
+  while(IRET<0);
+}
+
+void KinFit::Init()
+{
+  if(initialized)
+    return;
+
+  // tell APLCON the number of variables and the number of constraints
+  c_aplcon_aplcon(variables.size(), constraints.size());
+
+  initialized = true;
 }
 
 void KinFit::AddVariable(const string &name, const double value, const double sigma,
@@ -83,5 +112,7 @@ void KinFit::AddVariable(const string &name, const double value, const double si
   distributions.push_back(distribution);
   limits.push_back(make_pair(lowerLimit, upperLimit));
   stepSizes.push_back(stepSize);
+
+  initialized = false;
 }
 
