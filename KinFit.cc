@@ -150,6 +150,16 @@ KinFit::Result_t KinFit::DoFit()
     var.Value = {before.Value, X[i]};
     const size_t V_i = (i+1)*(i+2)/2-1;
     var.Sigma = {before.Sigma, sqrt(V[V_i])};
+    //
+    var.Covariances.Before.resize(X.size());
+    var.Covariances.After.resize(X.size());
+    for(size_t j=0; j<X.size(); j++) {
+      const size_t i_ = i<j ? i : j;
+      const size_t j_ = i>j ? i : j;
+      const size_t V_i = j_*(j_+1)/2 + i_;
+      var.Covariances.Before[j] = V_before[V_i];
+      var.Covariances.After[j] = V[V_i];
+    }
     var.Pull = pulls[i];
     var.Settings = before.Settings;
 
@@ -168,6 +178,7 @@ void KinFit::Init()
 
   if(initialized && instance_id == instance_lastfit)
     return;
+
   c_aplcon_aprint(0,0); // no output on stdout from now on
 
   // TODO: init more APLCON stuff like step sizes and so on...
@@ -235,9 +246,12 @@ void KinFit::Init()
     if(i>j) {
       swap(i,j);
     }
-    size_t offset = j*(j+1)/2;
+    const size_t offset = j*(j+1)/2;
     V[offset+i] = c_map.second;
   }
+  // save a copy for later
+  V_before = V;
+
   // remember that this instance has inited APLCON
   initialized = true;
   instance_lastfit = instance_id;

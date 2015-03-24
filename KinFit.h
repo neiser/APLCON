@@ -163,7 +163,7 @@ private:
   // storage vectors for APLCON (only usable after Init() call!)
   // X values, V covariances, F constraints
   // and some helper variables
-  std::vector<double> X, V, F;
+  std::vector<double> X, V, F, V_before;
   std::vector< std::function<double()> > F_func;
   std::map<std::string, size_t> X_s2i; // from varname to index in X
 
