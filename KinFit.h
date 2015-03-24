@@ -18,7 +18,10 @@
 class KinFit
 {
 public:
-  KinFit() : initialized(false), constraint_added(false) {}
+  KinFit() :
+    initialized(false),
+    instance_id(++instance_counter)
+  {}
   ~KinFit() {}
 
   enum class Distribution_t {
@@ -86,9 +89,7 @@ public:
                      const std::vector<std::string>& varnames,
                      T constraint)
   {
-    if(constraints.find(name) != constraints.end()) {
-      throw std::logic_error("Constraint with name '"+name+"' already added");
-    }
+    TestName("Constraint", name, constraints);
     auto f = make_function(constraint);
     const size_t n = count_arg<decltype(f)>::value;
     assert(varnames.size() == n);
@@ -141,8 +142,18 @@ private:
   // step sizes for numerical evaluation (zero if fixed, NaN if APLCON default)
   std::vector<double> stepSizes;
 
+  // storage vectors for APLCON
+  // X values, V covariances, F constraints
+  std::vector<double> X, V, F;
+
+  // since APLCON is stateful, multiple instances of KinFit
+  // need to init APLCON again after switching between them
+  // however, when always the same instance is run, we don't need
+  // to init APLCON
   bool initialized;
-  bool constraint_added;
+  static int instance_counter; // global instance counter (never decremented)
+  static int instance_lastfit; // save last instance id
+  int instance_id;
 
   void Init();
   void AddVariable(const std::string& name, const double value, const double sigma,
@@ -151,10 +162,20 @@ private:
                    const double stepSize
                    );
 
+  template<typename T>
+  void TestName(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
+    if(name.empty()) {
+      throw std::logic_error(tag+" name empty");
+    }
+    if(c.find(name) != c.end()) {
+      throw std::logic_error(tag+" with name '"+name+"' already added");
+    }
+  }
+
   // some extra stuff for having a nice constraint interface
 
   // first it seems pretty complicated to figure out how many arguments a
-  // given lambda has
+  // given lambda has (std::function is easy though)
   // based on http://stackoverflow.com/questions/20722918/how-to-make-c11-functions-taking-function-parameters-accept-lambdas-automati/
   // and http://stackoverflow.com/questions/9044866/how-to-get-the-number-of-arguments-of-stdfunction
 
@@ -173,10 +194,11 @@ private:
     return (typename function_traits<L>::f_type)(l);
   }
 
+  // this works only with std::function due to the necessary return type R (I guess)
   template<typename T>
   struct count_arg;
 
-  template<typename R, typename ...Args>
+  template<typename R, typename... Args>
   struct count_arg<std::function<R(Args...)>>
   {
       static const size_t value = sizeof...(Args);

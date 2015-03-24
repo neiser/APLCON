@@ -10,6 +10,9 @@ extern "C" {
 
 using namespace std;
 
+int KinFit::instance_counter = 0;
+int KinFit::instance_lastfit = 0;
+
 
 void KinFit::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
                                  const KinFit::Distribution_t distribution,
@@ -64,15 +67,10 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
 KinFit::Result_t KinFit::DoFit()
 {
   // ensure that APLCON is properly initialized
+  // and the value vectors X, F, V
   Init();
-  // build the initial values vector
-  vector<double> values(variables.size());
-  auto it1 = variables.begin();
-  auto it2 = values.begin();
-  for(; it1 != variables.end() && it2 != values.end();  ++it1, ++it2) {
-    *it2 = it1->second;
-  }
-  int IRET = -1;
+
+  int aplcon_ret = -1;
   do {
     // evaluate the constraints
     //vector<double> evals(constraints.size());
@@ -80,18 +78,24 @@ KinFit::Result_t KinFit::DoFit()
     //auto it4 = evals.begin();
     //c_aplcon_aploop(values.data(), covariances.data(), F.data(), &IRET);
   }
-  while(IRET<0);
+  while(aplcon_ret<0);
 }
 
 void KinFit::Init()
 {
-  if(initialized)
+  if(initialized && instance_id == instance_lastfit)
     return;
 
   // tell APLCON the number of variables and the number of constraints
-  //c_aplcon_aplcon(variables.size(), constraints.size());
+  c_aplcon_aplcon(variables.size(), constraints.size());
+
+  // TODO: init more APLCON stuff like step sizes and so on...
+
+  // build the storage arrays for APLCON
+
 
   initialized = true;
+  instance_lastfit = instance_id;
 }
 
 void KinFit::AddVariable(const string &name, const double value, const double sigma,
@@ -100,9 +104,7 @@ void KinFit::AddVariable(const string &name, const double value, const double si
                          const double stepSize)
 {
   // check if variable already exists
-  if(variables.find(name) != variables.end()) {
-    throw logic_error("Variable with name '"+name+"' already added");
-  }
+  TestName("Variable", name, variables);
 
   // add the variable to the map
   variables[name] = value;
