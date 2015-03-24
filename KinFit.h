@@ -30,6 +30,24 @@ public:
     SquareRoot
   };
 
+  struct Limit_t {
+    double Low;
+    double High;
+    const static Limit_t NoLimit;
+  };
+
+  struct Variable_Settings_t {
+    Distribution_t Distribution;
+    Limit_t Limit;
+    double StepSize;
+  };
+
+  struct Variable_t {
+    double Value;
+    double Sigma;
+    Variable_Settings_t Settings;
+  };
+
   enum class Result_Status_t {
     Success,
     NoConvergence,
@@ -45,11 +63,6 @@ public:
     T After;
   };
 
-  struct Limit_t {
-    double Low;
-    double High;
-    const static Limit_t NoLimit;
-  };
 
   struct Result_Variable_t {
     std::string Name;
@@ -57,10 +70,7 @@ public:
     Result_BeforeAfter_t<double> Sigma;
     Result_BeforeAfter_t< std::vector<double> > Covariances;
     double Pull;
-    // some more info about the variable
-    Distribution_t Distribution;
-    Limit_t Limit;
-    double StepSize;
+    Variable_Settings_t Settings;
   };
 
   struct Result_t {
@@ -140,26 +150,22 @@ private:
   };
 
   // values with starting values (works since map is ordered)
-  std::map<std::string, double> variables;
-  // track the type of distributions
-  std::vector<Distribution_t> distributions;
-  // track the limits (NaN if unset)
-  std::vector<Limit_t> limits;
-  // represents the symmetric covariance matrix
-  std::vector<double> covariances;
+  std::map<std::string, Variable_t> variables;
+  // off-diagonal covariances addressed by pairs of variable names
+  std::map< std::pair<std::string, std::string>, double > covariances;
   // the constraints
   // a constraint has a list of variable names and
   // a corresponding "vectorized" function evaluated on pointers to double
   std::map<std::string, constraint_t> constraints;
-  // step sizes for numerical evaluation (zero if fixed, NaN if APLCON default)
-  std::vector<double> stepSizes;
 
   // storage vectors for APLCON (only usable after Init() call!)
   // X values, V covariances, F constraints
   // and some helper variables
   std::vector<double> X, V, F;
   std::vector< std::function<double()> > F_func;
-  std::map<std::string, size_t> X_indices;
+  std::map<std::string, size_t> X_s2i; // from varname to index in X
+  std::vector<std::string> X_i2s; // from index in X to varname
+
 
   // since APLCON is stateful, multiple instances of KinFit
   // need to init APLCON again after switching between them

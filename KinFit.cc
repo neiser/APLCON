@@ -120,7 +120,15 @@ KinFit::Result_t KinFit::DoFit()
 
   // now we're ready to fill the result.Variables vector
   // we fill it in the same order as the X vector
+  // which makes debug output from  APLCON comparable to dumps of this structure
   result.Variables.reserve(variables.size());
+  for(size_t i = 0;i<variables.size();++i) {
+    const string& name = X_i2s[i];
+    Result_Variable_t var;
+    var.Name = name;
+    var.Value = {variables[name].Value,  X[i]};
+    //var.Sigma
+  }
 
   return result;
 }
@@ -139,19 +147,18 @@ void KinFit::Init()
 
   // build the storage arrays for APLCON
 
-  // very easy, copy the covariance matrix
-  V = covariances;
-
   // during init for X, also track the
   // map of variables names to index in X
   // this is used to create the double pointer arrays
   // for the constraints later and also to remap results of APLCON in DoFit
   X.resize(variables.size());
   auto it_vars = variables.cbegin(); // use const iterator
-  X_indices.clear();
+  X_s2i.clear();
+  X_i2s.reserve(variables.size());
   for(size_t i = 0; i < X.size() && it_vars != variables.cend() ; ++i, ++it_vars) {
-    X[i] = it_vars->second; // copy initial values
-    X_indices[it_vars->first] = i;
+    X[i] = it_vars->second.Value; // copy initial values
+    X_s2i[it_vars->first] = i;
+    X_i2s[i] = it_vars->first;
   }
 
   // F will be set by APLCON iteration loop in DoFit
@@ -166,14 +173,17 @@ void KinFit::Init()
     vector<const double*> args;
     args.reserve(c.VariableNames.size());
     for(const string& varname : c.VariableNames) {
-      auto index = X_indices.find(varname);
-      if(index == X_indices.end()) {
+      auto index = X_s2i.find(varname);
+      if(index == X_s2i.end()) {
         throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
       }
       args.emplace_back(&X[index->second]);
     }
     F_func.emplace_back(bind(c.Function, args));
   }
+
+  // V is built from the Sigma field in variables
+  // and possible off-diagonal covariances
 
   // remember that this instance has inited APLCON
   initialized = true;
@@ -188,19 +198,15 @@ void KinFit::AddVariable(const string &name, const double value, const double si
   // check if variable already exists
   TestName("Variable", name, variables);
 
+  Variable_t var;
+  var.Value = value;
+  var.Sigma = sigma;
+  var.Settings.Distribution = distribution;
+  var.Settings.Limit = limit;
+  var.Settings.StepSize = stepSize;
+
   // add the variable to the map
-  variables[name] = value;
-  const size_t n = variables.size();
-
-  // resize the symmetric covariance matrix and set the sigma
-  const size_t cov_size = n*(n+1)/2;
-  covariances.resize(cov_size, 0);
-  covariances[cov_size-1] = pow(sigma,2);
-
-  // save the other information
-  distributions.push_back(distribution);
-  limits.push_back(limit);
-  stepSizes.push_back(stepSize);
+  variables[name] = var;
 
   initialized = false;
 }
