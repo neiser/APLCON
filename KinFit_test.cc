@@ -15,6 +15,9 @@ int main() {
   k.AddConstraint("BF_e_equal", {"BF_e_A", "BF_e_B"}, make_equal);
   k.AddConstraint("BF_tau_equal", {"BF_tau_A", "BF_tau_B"}, make_equal);
 
+  //k.AddCovariance("BF_e_A", "BF_tau_B", 0.1);
+  //k.AddCovariance("BF_e_B", "BF_tau_A", 0.2);
+
   k.DoFit();
   k.DoFit();
 }

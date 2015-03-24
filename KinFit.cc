@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
+#include <utility>
 
 extern "C" {
 #include "APLCON_wrapper.h"
@@ -49,6 +51,21 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
   // fixed variables have stepSize of 0
   // and limits don't apply
   AddVariable(name, value, sigma, distribution, Limit_t::NoLimit, 0);
+}
+
+void KinFit::AddCovariance(const string &var1, const string &var2, const double cov)
+{
+  if(var1.empty() || var2.empty()) {
+    throw logic_error("Variable names cannot be empty strings");
+  }
+  const pair<string, string>& p1 = make_pair(var1, var2);
+  const pair<string, string>& p2 = make_pair(var2, var1);
+  if(covariances.find(p1) != covariances.end() ||
+     covariances.find(p2) != covariances.end()) {
+    throw logic_error("Covariance between '"+var1+"' and '"+var2+"' already added.");
+  }
+  covariances[p1] = cov;
+  initialized = false;
 }
 
 KinFit::Result_t KinFit::DoFit()
@@ -122,12 +139,22 @@ KinFit::Result_t KinFit::DoFit()
   // we fill it in the same order as the X vector
   // which makes debug output from  APLCON comparable to dumps of this structure
   result.Variables.reserve(variables.size());
-  for(size_t i = 0;i<variables.size();++i) {
-    const string& name = X_i2s[i];
+
+  auto it_vars = variables.cbegin();
+  for(size_t i=0; i<X.size(); ++i, ++it_vars) {
+    const string& name = it_vars->first;
+    const Variable_t& before = it_vars->second;
+
     Result_Variable_t var;
     var.Name = name;
-    var.Value = {variables[name].Value,  X[i]};
-    //var.Sigma
+    var.Value = {before.Value, X[i]};
+    const size_t V_i = (i+1)*(i+2)/2-1;
+    var.Sigma = {before.Sigma, sqrt(V[V_i])};
+    var.Pull = pulls[i];
+    var.Settings = before.Settings;
+
+    // iterating over variables should be the right order
+    result.Variables.push_back(var);
   }
 
   return result;
@@ -147,18 +174,25 @@ void KinFit::Init()
 
   // build the storage arrays for APLCON
 
-  // during init for X, also track the
-  // map of variables names to index in X
+  // prepare the symmetric covariance matrix
+  const size_t n = variables.size();
+  V.resize(n*(n+1)/2);
+  fill(V.begin(), V.end(), 0);
+
+  // X are simpy the start values, but also track the
+  // map of variables names to index in X and vice-versa
   // this is used to create the double pointer arrays
   // for the constraints later and also to remap results of APLCON in DoFit
   X.resize(variables.size());
   auto it_vars = variables.cbegin(); // use const iterator
-  X_s2i.clear();
-  X_i2s.reserve(variables.size());
+  X_s2i.clear(); // clear the map
+  //X_i2s.resize(variables.size());
   for(size_t i = 0; i < X.size() && it_vars != variables.cend() ; ++i, ++it_vars) {
-    X[i] = it_vars->second.Value; // copy initial values
+    const Variable_t& var = it_vars->second;
+    X[i] = var.Value; // copy initial values
     X_s2i[it_vars->first] = i;
-    X_i2s[i] = it_vars->first;
+    const size_t V_i = (i+1)*(i+2)/2-1;
+    V[V_i] = pow(var.Sigma,2);
   }
 
   // F will be set by APLCON iteration loop in DoFit
@@ -182,9 +216,28 @@ void KinFit::Init()
     F_func.emplace_back(bind(c.Function, args));
   }
 
-  // V is built from the Sigma field in variables
-  // and possible off-diagonal covariances
-
+  // V filled with off-diagonal elements from covariances
+  for(const auto& c_map : covariances) {
+    const pair<string, string>& vars = c_map.first;
+    auto i1 = X_s2i.find(vars.first);
+    if(i1 == X_s2i.end()) {
+      throw logic_error("Covariance variable '"+vars.first+"' not found");
+    }
+    auto i2 = X_s2i.find(vars.second);
+    if(i2 == X_s2i.end()) {
+      throw logic_error("Covariance variable '"+vars.second+"' not found");
+    }
+    if(i1==i2) {
+      throw logic_error("Use variable's Sigma field to define uncertainties.");
+    }
+    int i = i1->second;
+    int j = i2->second;
+    if(i>j) {
+      swap(i,j);
+    }
+    size_t offset = j*(j+1)/2;
+    V[offset+i] = c_map.second;
+  }
   // remember that this instance has inited APLCON
   initialized = true;
   instance_lastfit = instance_id;

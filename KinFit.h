@@ -139,6 +139,8 @@ public:
                      const std::vector<std::string>& varnames,
                      T constraint);
 
+  void AddCovariance(const std::string& var1, const std::string& var2, const double cov);
+
 //  using map_t = std::map<std::string, double>;
 //  void UpdateValues(const map_t& values);
 //  void UpdateSigmas(const map_t& sigmas);
@@ -164,8 +166,6 @@ private:
   std::vector<double> X, V, F;
   std::vector< std::function<double()> > F_func;
   std::map<std::string, size_t> X_s2i; // from varname to index in X
-  std::vector<std::string> X_i2s; // from index in X to varname
-
 
   // since APLCON is stateful, multiple instances of KinFit
   // need to init APLCON again after switching between them
@@ -258,6 +258,7 @@ void KinFit::AddConstraint(const std::string& name,
   const size_t n = count_arg<decltype(f)>::value;
   assert(varnames.size() == n);
   constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
+  initialized = false;
 }
 
 template<typename T>
