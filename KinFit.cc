@@ -72,6 +72,50 @@ KinFit::Result_t KinFit::DoFit()
   }
   while(aplcon_ret<0);
 
+  // retrieve the results
+  Result_t result;
+
+  // interpret status number according to README
+  bool converged = false;
+  switch (aplcon_ret) {
+  case 0:
+    result.Status = Status_t::Success;
+    converged = true;
+    break;
+  case 1:
+    result.Status = Status_t::NoConvergence;
+  case 2:
+    result.Status = Status_t::TooManyIterations;
+  case 3:
+    result.Status = Status_t::UnphysicalValues;
+  case 4:
+    result.Status = Status_t::NegativeDoF;
+  case 5:
+    result.Status = Status_t::OutOfMemory;
+  default:
+    throw logic_error("Unkown return value after APLCON fit");
+  }
+
+  // return default result if not successful
+  if(!converged)
+    return result;
+
+  // now retrieve everything from APLCON,
+  // we don't do any calculation on our own
+  // since we are a stupid wrapper :)
+
+  // retrieve some info about the fit (directly copy to struct field if possible)
+  float chi2, pval;
+  // chndpv and apstat both return the resulting chi2,
+  // but the latter returns it with double precision
+  c_aplcon_chndpv(&chi2,&result.NDoF,&pval);
+  result.Probability = pval;
+  c_aplcon_apstat(&result.ChiSquare, &result.NFunctionCalls, &result.NIterations);
+  // get the pulls from APLCON
+  vector<double> pulls(X.size());
+  c_aplcon_appull(pulls.data());
+
+  return result;
 }
 
 void KinFit::Init()
@@ -81,6 +125,7 @@ void KinFit::Init()
 
   // tell APLCON the number of variables and the number of constraints
   c_aplcon_aplcon(variables.size(), constraints.size());
+  c_aplcon_aprint(0,0); // no output on stdout from now on
 
   // TODO: init more APLCON stuff like step sizes and so on...
 
@@ -92,10 +137,10 @@ void KinFit::Init()
   // during init for X, also track the
   // map of variables names to index in X
   // this is used to create the double pointer arrays
-  // for the constraints later
+  // for the constraints later and also to remap results of APLCON in DoFit
   X.resize(variables.size());
   auto it_vars = variables.cbegin(); // use const iterator
-  map<string, size_t> X_indices;
+  X_indices.clear();
   for(size_t i = 0; i < X.size() && it_vars != variables.cend() ; ++i, ++it_vars) {
     X[i] = it_vars->second; // copy initial values
     X_indices[it_vars->first] = i;
@@ -105,6 +150,7 @@ void KinFit::Init()
   // F_func are bound to the double pointers which we know
   // since X is now finally allocated in memory
   F.resize(constraints.size());
+  F_func.clear();
   F_func.reserve(constraints.size());
   for(const auto& c_map : constraints) {
     // build the vector of double pointers

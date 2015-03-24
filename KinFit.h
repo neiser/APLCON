@@ -13,7 +13,7 @@
  * @brief The KinFit class
  * Provides a C++11'ish wrapper around
  * V.Blobel's FORTRAN APLCON constrained least squares fitter
- * see http://www.desy.de/~blobel/wwwcondl.html for details
+ * see http://www.desy.de/~blobel/wwwcondl.html for details of the original FORTRAN code
  */
 class KinFit
 {
@@ -104,7 +104,7 @@ public:
 
   enum class Status_t {
     Success,
-    NotConverged,
+    NoConvergence,
     TooManyIterations,
     UnphysicalValues,
     NegativeDoF,
@@ -141,14 +141,16 @@ private:
   // step sizes for numerical evaluation (zero if fixed, NaN if APLCON default)
   std::vector<double> stepSizes;
 
-  // storage vectors for APLCON
+  // storage vectors for APLCON (only usable after Init() call!)
   // X values, V covariances, F constraints
+  // and some helper variables
   std::vector<double> X, V, F;
   std::vector< std::function<double()> > F_func;
+  std::map<std::string, size_t> X_indices;
 
   // since APLCON is stateful, multiple instances of KinFit
   // need to init APLCON again after switching between them
-  // however, when always the same instance is run, we don't need
+  // However, when always the same instance is run, we don't need
   // to init APLCON
   bool initialized;
   static int instance_counter; // global instance counter (never decremented)
