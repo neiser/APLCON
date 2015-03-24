@@ -7,6 +7,7 @@
 #include <limits>
 #include <assert.h>
 #include <type_traits>
+#include <iostream>
 
 /**
  * @brief The KinFit class
@@ -76,19 +77,24 @@ public:
 
   /**
    * @brief AddConstraint
-   *
-   * @param name
-   * @param f
+   * @param name unique label for the constraint
+   * @param referred variable names the constraint should act on
+   * @param constraint lambda function taking varnames size double arguments, and return double. Should vanish if fulfilled.
    */
-  template<typename varnames_t, size_t n_varnames, typename constraint_function_t>
-  void AddConstraint(const std::string& name, varnames_t const(&varnames)[n_varnames], constraint_function_t constraint)
+  template<typename T>
+  void AddConstraint(const std::string& name,
+                     const std::vector<std::string>& varnames,
+                     T constraint)
   {
-    // convert the vars into vector string
-    // we need to have this weird C-style array to deduce the size N of parameters
-    static_assert(std::is_same<varnames_t, const char*>::value, "AddConstraint only works with constant strings as variable names");
-    const std::vector<std::string> v(std::begin(varnames), std::end(varnames));
-    constraints[name] = {v, bind_constraint(constraint, build_indices<n_varnames>{})};
+    if(constraints.find(name) != constraints.end()) {
+      throw std::logic_error("Constraint with name '"+name+"' already added");
+    }
+    auto f = make_function(constraint);
+    const size_t n = count_arg<decltype(f)>::value;
+    assert(varnames.size() == n);
+    constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
   }
+
 
   void UpdateValues(const std::map<std::string, double>& values);
   void UpdateSigmas(const std::map<std::string, double>& sigmas);
@@ -146,6 +152,35 @@ private:
                    );
 
   // some extra stuff for having a nice constraint interface
+
+  // first it seems pretty complicated to figure out how many arguments a
+  // given lambda has
+  // based on http://stackoverflow.com/questions/20722918/how-to-make-c11-functions-taking-function-parameters-accept-lambdas-automati/
+  // and http://stackoverflow.com/questions/9044866/how-to-get-the-number-of-arguments-of-stdfunction
+
+  template <typename T>
+  struct function_traits
+     : public function_traits<decltype(&T::operator())>
+  {};
+
+  template <typename ClassType, typename ReturnType, typename... Args>
+  struct function_traits<ReturnType(ClassType::*)(Args...) const> {
+     typedef std::function<ReturnType (Args...)> f_type;
+  };
+
+  template <typename L>
+  typename function_traits<L>::f_type make_function(L l){
+    return (typename function_traits<L>::f_type)(l);
+  }
+
+  template<typename T>
+  struct count_arg;
+
+  template<typename R, typename ...Args>
+  struct count_arg<std::function<R(Args...)>>
+  {
+      static const size_t value = sizeof...(Args);
+  };
 
   // this little template fun is called "pack of indices"
   // it enables the nice definition of constraints via AddConstraint(...) method

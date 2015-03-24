@@ -101,7 +101,7 @@ void KinFit::AddVariable(const string &name, const double value, const double si
 {
   // check if variable already exists
   if(variables.find(name) != variables.end()) {
-    throw logic_error("Variable already exists");
+    throw logic_error("Variable with name '"+name+"' already added");
   }
 
   // add the variable to the map

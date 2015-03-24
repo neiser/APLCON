@@ -28,8 +28,14 @@ int main() {
 
   //const vector<const string> t = ;
 
+//  k.AddConstraint("test", {"bla", "blu"},
+//                  function<double(double,double)>(
+//                  [] (double a, double b) { return a - b;})
+//                  );
+
   k.AddConstraint("test", {"bla", "blu"},
-                  [] (double a, double b) { return a - b;});
+                  [] (double a, double b) { return a - b;}
+                  );
 
   //k.DoFit();
 }
