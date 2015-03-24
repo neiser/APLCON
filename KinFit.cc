@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <cmath>
+#include <iostream>
 
 extern "C" {
 #include "APLCON_wrapper.h"
@@ -54,16 +55,6 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
               );
 }
 
-/*void KinFit::AddConstraint(const string &name, const constraint_t &constraint)
-{
-  // check if variable already exists
-  if(constraints.find(name) != constraints.end()) {
-    throw logic_error("Constraint already added");
-  }
-  constraints[name] = constraint;
-  initialized = false;
-}*/
-
 KinFit::Result_t KinFit::DoFit()
 {
   // ensure that APLCON is properly initialized
@@ -73,12 +64,14 @@ KinFit::Result_t KinFit::DoFit()
   int aplcon_ret = -1;
   do {
     // evaluate the constraints
-    //vector<double> evals(constraints.size());
-    //auto it3 = constraints.begin();
-    //auto it4 = evals.begin();
-    //c_aplcon_aploop(values.data(), covariances.data(), F.data(), &IRET);
+    for(size_t i=0; i<F.size(); ++i) {
+      F[i] = F_func[i]();
+    }
+    // call APLCON iteration
+    c_aplcon_aploop(X.data(), V.data(), F.data(), &aplcon_ret);
   }
   while(aplcon_ret<0);
+
 }
 
 void KinFit::Init()
@@ -93,7 +86,42 @@ void KinFit::Init()
 
   // build the storage arrays for APLCON
 
+  // very easy, copy the covariance matrix
+  V = covariances;
 
+  // during init for X, also track the
+  // map of variables names to index in X
+  // this is used to create the double pointer arrays
+  // for the constraints later
+  X.resize(variables.size());
+  auto it_vars = variables.cbegin(); // use const iterator
+  map<string, size_t> X_indices;
+  for(size_t i = 0; i < X.size() && it_vars != variables.cend() ; ++i, ++it_vars) {
+    X[i] = it_vars->second; // copy initial values
+    X_indices[it_vars->first] = i;
+  }
+
+  // F will be set by APLCON iteration loop in DoFit
+  // F_func are bound to the double pointers which we know
+  // since X is now finally allocated in memory
+  F.resize(constraints.size());
+  F_func.reserve(constraints.size());
+  for(const auto& c_map : constraints) {
+    // build the vector of double pointers
+    const constraint_t& c = c_map.second;
+    vector<const double*> args;
+    args.reserve(c.VariableNames.size());
+    for(const string& varname : c.VariableNames) {
+      auto index = X_indices.find(varname);
+      if(index == X_indices.end()) {
+        throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
+      }
+      args.emplace_back(&X[index->second]);
+    }
+    F_func.emplace_back(bind(c.Function, args));
+  }
+
+  // remember that this instance has inited APLCON
   initialized = true;
   instance_lastfit = instance_id;
 }

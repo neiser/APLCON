@@ -22,7 +22,6 @@ public:
     initialized(false),
     instance_id(++instance_counter)
   {}
-  ~KinFit() {}
 
   enum class Distribution_t {
     Gaussian,
@@ -145,6 +144,7 @@ private:
   // storage vectors for APLCON
   // X values, V covariances, F constraints
   std::vector<double> X, V, F;
+  std::vector< std::function<double()> > F_func;
 
   // since APLCON is stateful, multiple instances of KinFit
   // need to init APLCON again after switching between them
@@ -190,7 +190,7 @@ private:
   };
 
   template <typename L>
-  typename function_traits<L>::f_type make_function(L l){
+  typename function_traits<L>::f_type make_function(L l) {
     return (typename function_traits<L>::f_type)(l);
   }
 
@@ -199,8 +199,7 @@ private:
   struct count_arg;
 
   template<typename R, typename... Args>
-  struct count_arg<std::function<R(Args...)>>
-  {
+  struct count_arg<std::function<R(Args...)>> {
       static const size_t value = sizeof...(Args);
   };
 
