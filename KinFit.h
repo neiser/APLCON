@@ -7,7 +7,7 @@
 #include <limits>
 #include <assert.h>
 #include <type_traits>
-#include <iostream>
+#include <stdexcept>
 
 /**
  * @brief The KinFit class
