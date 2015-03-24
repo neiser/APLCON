@@ -13,11 +13,11 @@ using namespace std;
 
 int KinFit::instance_counter = 0;
 int KinFit::instance_lastfit = 0;
-
+const KinFit::Limit_t KinFit::Limit_t::NoLimit = {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
 
 void KinFit::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
                                  const KinFit::Distribution_t distribution,
-                                 const double lowerLimit, const double upperLimit,
+                                 const Limit_t limit,
                                  const double stepSize)
 {
   if(sigma == 0) {
@@ -26,18 +26,18 @@ void KinFit::AddMeasuredVariable(const std::string &name, const double value, co
   if(stepSize == 0) {
     throw logic_error("Measured variables need non-zero step size. By definition, they are fixed then.");
   }
-  AddVariable(name, value, sigma, distribution, lowerLimit, upperLimit, stepSize);
+  AddVariable(name, value, sigma, distribution, limit, stepSize);
 }
 
 void KinFit::AddUnmeasuredVariable(const string &name, const double value,
-                                   const double lowerLimit, const double upperLimit,
+                                   const Limit_t limit,
                                    const double stepSize)
 {
   if(stepSize == 0) {
     throw logic_error("Unmeasured variables need non-zero step size. By definition, they are fixed then.");
   }
   // unmeasured variables have a sigma of 0
-  AddVariable(name, value, 0, Distribution_t::Gaussian, lowerLimit, upperLimit, stepSize);
+  AddVariable(name, value, 0, Distribution_t::Gaussian, limit, stepSize);
 }
 
 void KinFit::AddFixedVariable(const string &name, const double value, const double sigma,
@@ -48,11 +48,7 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
   }
   // fixed variables have stepSize of 0
   // and limits don't apply
-  AddVariable(name, value, sigma, distribution,
-              std::numeric_limits<double>::quiet_NaN(),
-              std::numeric_limits<double>::quiet_NaN(),
-              0
-              );
+  AddVariable(name, value, sigma, distribution, Limit_t::NoLimit, 0);
 }
 
 KinFit::Result_t KinFit::DoFit()
@@ -61,6 +57,7 @@ KinFit::Result_t KinFit::DoFit()
   // and the value vectors X, F, V
   Init();
 
+  // the main convergence loop
   int aplcon_ret = -1;
   do {
     // evaluate the constraints
@@ -72,26 +69,26 @@ KinFit::Result_t KinFit::DoFit()
   }
   while(aplcon_ret<0);
 
-  // retrieve the results
+  // now, after the loop, retrieve the results
   Result_t result;
 
   // interpret status number according to README
   bool converged = false;
   switch (aplcon_ret) {
   case 0:
-    result.Status = Status_t::Success;
+    result.Status = Result_Status_t::Success;
     converged = true;
     break;
   case 1:
-    result.Status = Status_t::NoConvergence;
+    result.Status = Result_Status_t::NoConvergence;
   case 2:
-    result.Status = Status_t::TooManyIterations;
+    result.Status = Result_Status_t::TooManyIterations;
   case 3:
-    result.Status = Status_t::UnphysicalValues;
+    result.Status = Result_Status_t::UnphysicalValues;
   case 4:
-    result.Status = Status_t::NegativeDoF;
+    result.Status = Result_Status_t::NegativeDoF;
   case 5:
-    result.Status = Status_t::OutOfMemory;
+    result.Status = Result_Status_t::OutOfMemory;
   default:
     throw logic_error("Unkown return value after APLCON fit");
   }
@@ -111,6 +108,7 @@ KinFit::Result_t KinFit::DoFit()
   c_aplcon_chndpv(&chi2,&result.NDoF,&pval);
   result.Probability = pval;
   c_aplcon_apstat(&result.ChiSquare, &result.NFunctionCalls, &result.NIterations);
+
   // get the pulls from APLCON
   vector<double> pulls(X.size());
   c_aplcon_appull(pulls.data());
@@ -174,7 +172,7 @@ void KinFit::Init()
 
 void KinFit::AddVariable(const string &name, const double value, const double sigma,
                          const KinFit::Distribution_t distribution,
-                         const double lowerLimit, const double upperLimit,
+                         const Limit_t limit,
                          const double stepSize)
 {
   // check if variable already exists
@@ -191,7 +189,7 @@ void KinFit::AddVariable(const string &name, const double value, const double si
 
   // save the other information
   distributions.push_back(distribution);
-  limits.push_back(make_pair(lowerLimit, upperLimit));
+  limits.push_back(limit);
   stepSizes.push_back(stepSize);
 
   initialized = false;

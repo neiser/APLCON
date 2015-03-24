@@ -30,7 +30,50 @@ public:
     SquareRoot
   };
 
-  using map_t = std::map<std::string, double>;
+  enum class Result_Status_t {
+    Success,
+    NoConvergence,
+    TooManyIterations,
+    UnphysicalValues,
+    NegativeDoF,
+    OutOfMemory
+  };
+
+  template<typename T>
+  struct Result_BeforeAfter_t {
+    T Before;
+    T After;
+  };
+
+  struct Limit_t {
+    double Low;
+    double High;
+    const static Limit_t NoLimit;
+  };
+
+  struct Result_Variable_t {
+    std::string Name;
+    Result_BeforeAfter_t<double> Value;
+    Result_BeforeAfter_t<double> Sigma;
+    Result_BeforeAfter_t< std::vector<double> > Covariances;
+    double Pull;
+    // some more info about the variable
+    Distribution_t Distribution;
+    Limit_t Limit;
+    double StepSize;
+  };
+
+  struct Result_t {
+    Result_Status_t Status;
+    double ChiSquare;
+    int NDoF;
+    double Probability;
+    int NIterations;
+    int NFunctionCalls;
+    std::vector<Result_Variable_t> Variables;
+  };
+
+  Result_t DoFit();
 
   /**
    * @brief AddMeasuredVariable
@@ -46,8 +89,7 @@ public:
                            const double value = std::numeric_limits<double>::quiet_NaN(),
                            const double sigma = std::numeric_limits<double>::quiet_NaN(),
                            const Distribution_t distribution = Distribution_t::Gaussian,
-                           const double lowerLimit = std::numeric_limits<double>::quiet_NaN(),
-                           const double upperLimit = std::numeric_limits<double>::quiet_NaN(),
+                           const Limit_t limit = Limit_t::NoLimit,
                            const double stepSize = std::numeric_limits<double>::quiet_NaN()
       );
   /**
@@ -60,8 +102,7 @@ public:
    */
   void AddUnmeasuredVariable(const std::string& name,
                              const double value = std::numeric_limits<double>::quiet_NaN(),
-                             const double lowerLimit = std::numeric_limits<double>::quiet_NaN(),
-                             const double upperLimit = std::numeric_limits<double>::quiet_NaN(),
+                             const Limit_t limit = Limit_t::NoLimit,
                              const double stepSize = std::numeric_limits<double>::quiet_NaN()
       );
   /**
@@ -86,57 +127,29 @@ public:
   template<typename T>
   void AddConstraint(const std::string& name,
                      const std::vector<std::string>& varnames,
-                     T constraint)
-  {
-    TestName("Constraint", name, constraints);
-    auto f = make_function(constraint);
-    const size_t n = count_arg<decltype(f)>::value;
-    assert(varnames.size() == n);
-    constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
-  }
+                     T constraint);
 
+//  using map_t = std::map<std::string, double>;
+//  void UpdateValues(const map_t& values);
+//  void UpdateSigmas(const map_t& sigmas);
 
-  void UpdateValues(const std::map<std::string, double>& values);
-  void UpdateSigmas(const std::map<std::string, double>& sigmas);
-
-  std::map<std::string, double> GetValues() const;
-  std::map<std::string, double> GetSigmas() const;
-
-  enum class Status_t {
-    Success,
-    NoConvergence,
-    TooManyIterations,
-    UnphysicalValues,
-    NegativeDoF,
-    OutOfMemory
-  };
-
-  struct Result_t {
-    Status_t Status;
-    double ChiSquare;
-    int NDoF;
-    double Probability;
-    int NIterations;
-    int NFunctionCalls;
-  };
-
-  Result_t DoFit();
 private:
+  struct constraint_t {
+    std::vector<std::string> VariableNames;
+    std::function<double(const std::vector<const double*>&)> Function;
+  };
+
   // values with starting values (works since map is ordered)
   std::map<std::string, double> variables;
   // track the type of distributions
   std::vector<Distribution_t> distributions;
   // track the limits (NaN if unset)
-  std::vector< std::pair<double, double> > limits;
+  std::vector<Limit_t> limits;
   // represents the symmetric covariance matrix
   std::vector<double> covariances;
   // the constraints
   // a constraint has a list of variable names and
   // a corresponding "vectorized" function evaluated on pointers to double
-  struct constraint_t {
-    std::vector<std::string> VariableNames;
-    std::function<double(const std::vector<const double*>&)> Function;
-  };
   std::map<std::string, constraint_t> constraints;
   // step sizes for numerical evaluation (zero if fixed, NaN if APLCON default)
   std::vector<double> stepSizes;
@@ -160,19 +173,12 @@ private:
   void Init();
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const Distribution_t distribution,
-                   const double lowerLimit, const double upperLimit,
+                   const Limit_t limit,
                    const double stepSize
                    );
-
   template<typename T>
-  void TestName(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
-    if(name.empty()) {
-      throw std::logic_error(tag+" name empty");
-    }
-    if(c.find(name) != c.end()) {
-      throw std::logic_error(tag+" with name '"+name+"' already added");
-    }
-  }
+  void TestName(const std::string& tag, const std::string& name,
+                std::map<std::string, T> c);
 
   // some extra stuff for having a nice constraint interface
 
@@ -233,5 +239,29 @@ private:
   }
 
 };
+
+// templated methods must be implemented in header file
+
+template<typename T>
+void KinFit::AddConstraint(const std::string& name,
+                   const std::vector<std::string>& varnames,
+                   T constraint)
+{
+  TestName("Constraint", name, constraints);
+  auto f = make_function(constraint);
+  const size_t n = count_arg<decltype(f)>::value;
+  assert(varnames.size() == n);
+  constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
+}
+
+template<typename T>
+void KinFit::TestName(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
+  if(name.empty()) {
+    throw std::logic_error(tag+" name empty");
+  }
+  if(c.find(name) != c.end()) {
+    throw std::logic_error(tag+" with name '"+name+"' already added");
+  }
+}
 
 #endif // KINFIT_H
