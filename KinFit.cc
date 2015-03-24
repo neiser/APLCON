@@ -5,6 +5,9 @@
 #include <iostream>
 #include <algorithm>
 #include <utility>
+#include <sstream>
+#include <iomanip>
+
 
 extern "C" {
 #include "APLCON_wrapper.h"
@@ -167,6 +170,11 @@ KinFit::Result_t KinFit::DoFit()
     result.Variables.push_back(var);
   }
 
+  result.Constraints.reserve(constraints.size());
+  for(const auto& c : constraints) {
+    result.Constraints.emplace_back(c.first);
+  }
+  result.Name = instance_name;
   return result;
 }
 
@@ -276,5 +284,76 @@ void KinFit::AddVariable(const string &name, const double value, const double si
   variables[name] = var;
 
   initialized = false;
+}
+
+// finally the ostream implementation for nice (debug) printout
+
+std::ostream& operator<< (std::ostream& o, const KinFit::Result_Status_t& s) {
+  switch (s) {
+  case KinFit::Result_Status_t::Success:
+    o << "Success";
+    break;
+  case KinFit::Result_Status_t::NoConvergence:
+    o << "NoConvergence";
+    break;
+  case KinFit::Result_Status_t::TooManyIterations:
+    o << "TooManyIterations";
+    break;
+  case KinFit::Result_Status_t::UnphysicalValues:
+    o << "UnphysicalValues";
+    break;
+  case KinFit::Result_Status_t::NegativeDoF:
+    o << "NegativeDoF";
+    break;
+  case KinFit::Result_Status_t::OutOfMemory:
+    o << "OutOfMemory";
+    break;
+  default:
+    throw logic_error("Unkown Result_Status_t in ostream");
+    break;
+  }
+
+  return o;
+}
+
+template<typename T, typename F>
+string stringify(const vector<T>& c, F f) {
+  stringstream o;
+  for(size_t i=0 ; i<c.size() ; i++) {
+    o << f(c[i]);
+    if(i != c.size()-1)
+      o << ", ";
+  }
+  return o.str();
+}
+
+
+
+
+ostream& operator<< (ostream& o, const KinFit::Result_t& r) {
+  o << ">> " << (r.Name==""?"KinFit":r.Name) << " with " << r.Variables.size() << " variables and "
+    << r.Constraints.size() << " constraints:" << endl;
+  o << "   " << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << endl;
+  //o << "   Variables:   " <<
+  //     stringify(r.Variables, [](const KinFit::Result_Variable_t& v) {return v.Name;}) << endl;
+  o << "   Constraints: " <<
+       stringify(r.Constraints, [](const string& v) {return v;}) << endl;
+  o << "   Before Fit:" << endl;
+  o << scientific << setprecision(2);
+  for(const auto& v : r.Variables) {
+    o << "   " << setw(10) << v.Name
+      << setw(10) << v.Value.Before
+      << setw(10) << v.Sigma.Before
+      << endl;
+  }
+  o << "   After Fit:" << endl;
+  for(const auto& v : r.Variables) {
+    o << "   " << setw(10) << v.Name
+      << setw(10) << v.Value.After
+      << setw(10) << v.Sigma.After
+      << setw(10) <<  v.Pull
+      << endl;
+  }
+  return o;
 }
 

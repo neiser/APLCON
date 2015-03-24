@@ -18,7 +18,8 @@
 class KinFit
 {
 public:
-  KinFit() :
+  KinFit(const std::string& name = "") :
+    instance_name(name),
     initialized(false),
     instance_id(++instance_counter)
   {}
@@ -74,6 +75,7 @@ public:
   };
 
   struct Result_t {
+    std::string Name;
     Result_Status_t Status;
     double ChiSquare;
     int NDoF;
@@ -81,6 +83,7 @@ public:
     int NIterations;
     int NFunctionCalls;
     std::vector<Result_Variable_t> Variables;
+    std::vector<std::string> Constraints;
   };
 
   Result_t DoFit();
@@ -171,6 +174,7 @@ private:
   // need to init APLCON again after switching between them
   // However, when always the same instance is run, we don't need
   // to init APLCON
+  const std::string instance_name;
   bool initialized;
   static int instance_counter; // global instance counter (never decremented)
   static int instance_lastfit; // save last instance id
@@ -270,5 +274,9 @@ void KinFit::TestName(const std::string& tag, const std::string& name, std::map<
     throw std::logic_error(tag+" with name '"+name+"' already added");
   }
 }
+
+std::ostream& operator<< (std::ostream& stream, const KinFit::Result_Status_t& o);
+std::ostream& operator<< (std::ostream& stream, const KinFit::Result_t& o);
+
 
 #endif // KINFIT_H

@@ -5,7 +5,7 @@
 using namespace std;
 
 int main() {
-  KinFit k;
+  KinFit k("FirstTest");
   k.AddMeasuredVariable("BF_e_A", 0.1050, 0.01);
   k.AddMeasuredVariable("BF_e_B", 0.135, 0.03);
   k.AddMeasuredVariable("BF_tau_A", 0.095, 0.03);
@@ -18,6 +18,5 @@ int main() {
   //k.AddCovariance("BF_e_A", "BF_tau_B", 0.1);
   //k.AddCovariance("BF_e_B", "BF_tau_A", 0.2);
 
-  k.DoFit();
-  k.DoFit();
+  cout << k.DoFit() << endl;
 }
