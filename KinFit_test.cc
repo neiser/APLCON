@@ -16,4 +16,5 @@ int main() {
   k.AddConstraint("BF_tau_equal", {"BF_tau_A", "BF_tau_B"}, make_equal);
 
   k.DoFit();
+  k.DoFit();
 }

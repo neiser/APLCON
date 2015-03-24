@@ -81,14 +81,19 @@ KinFit::Result_t KinFit::DoFit()
     break;
   case 1:
     result.Status = Result_Status_t::NoConvergence;
+    break;
   case 2:
     result.Status = Result_Status_t::TooManyIterations;
+    break;
   case 3:
     result.Status = Result_Status_t::UnphysicalValues;
+    break;
   case 4:
     result.Status = Result_Status_t::NegativeDoF;
+    break;
   case 5:
     result.Status = Result_Status_t::OutOfMemory;
+    break;
   default:
     throw logic_error("Unkown return value after APLCON fit");
   }
@@ -113,16 +118,21 @@ KinFit::Result_t KinFit::DoFit()
   vector<double> pulls(X.size());
   c_aplcon_appull(pulls.data());
 
+  // now we're ready to fill the result.Variables vector
+  // we fill it in the same order as the X vector
+  result.Variables.reserve(variables.size());
+
   return result;
 }
 
 void KinFit::Init()
 {
+  // tell APLCON the number of variables and the number of constraints
+  // this call is always needed before the c_aplcon_aploop calls
+  c_aplcon_aplcon(variables.size(), constraints.size());
+
   if(initialized && instance_id == instance_lastfit)
     return;
-
-  // tell APLCON the number of variables and the number of constraints
-  c_aplcon_aplcon(variables.size(), constraints.size());
   c_aplcon_aprint(0,0); // no output on stdout from now on
 
   // TODO: init more APLCON stuff like step sizes and so on...
