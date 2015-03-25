@@ -101,6 +101,16 @@ public:
     fit_settings(_fit_settings)
   {}
 
+  APLCON(const APLCON& _old,
+         const std::string& _name,
+         const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default)
+      : APLCON(_old)
+  {
+      instance_name = _name;
+      fit_settings  = _fit_settings;
+  }
+
+
   Result_t DoFit();
 
   /**
@@ -193,7 +203,7 @@ private:
   // need to init APLCON again after switching between them
   // However, when always the same instance is run, we don't need
   // to init APLCON
-  const std::string instance_name;
+  std::string instance_name;
   bool initialized;
   static int instance_counter; // global instance counter (never decremented)
   static int instance_lastfit; // save last instance id

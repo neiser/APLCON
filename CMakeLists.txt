@@ -8,7 +8,7 @@ if(CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR AND NOT MSVC_IDE)
     "Also don't forget to delete the created CMakeCache.txt and CMakeFiles dir"
     )
 endif()
-    
+
 include (cmake/settings.cmake)
 
 message(STATUS "*** Build Type:      " ${CMAKE_BUILD_TYPE})
@@ -20,7 +20,7 @@ add_subdirectory(APLCON)
 
 include_directories(src)
 
-add_library(aplcon++ SHARED src/APLCON.cc src/wrapper/APLCON.f90)
+add_library(aplcon++ SHARED src/APLCON.cc src/wrapper/APLCON.f90 src/wrapper/APLCON.h)
 target_link_libraries(aplcon++ aplcon)
 
 add_executable(aplcon_example src/APLCON_example.cc)

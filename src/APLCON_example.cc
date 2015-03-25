@@ -22,4 +22,10 @@ int main() {
 
   const APLCON::Result_t& r = a.DoFit();
   cout << r << endl;
+
+  //APLCON b(a, "Another example");
+  //a.AddConstraint("BF_e_equal_", {"BF_e_A", "BF_e_B"}, make_equal);
+  //cout << b.DoFit() << endl;
+  cout << a.DoFit() << endl;
+
 }
