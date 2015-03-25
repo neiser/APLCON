@@ -1,5 +1,5 @@
-#ifndef KINFIT_H
-#define KINFIT_H
+#ifndef APLCON_HPP
+#define APLCON_HPP
 
 #include <vector>
 #include <map>
@@ -10,12 +10,12 @@
 #include <stdexcept>
 
 /**
- * @brief The KinFit class
+ * @brief The APLCON class
  * Provides a C++11'ish wrapper around
  * V.Blobel's FORTRAN APLCON constrained least squares fitter
  * see http://www.desy.de/~blobel/wwwcondl.html for details of the original FORTRAN code
  */
-class KinFit
+class APLCON
 {
 public:
 
@@ -93,7 +93,7 @@ public:
   };
 
 
-  KinFit(const std::string& _name = "",
+  APLCON(const std::string& _name = "",
          const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default) :
     instance_name(_name),
     initialized(false),
@@ -159,10 +159,6 @@ public:
 
   void AddCovariance(const std::string& var1, const std::string& var2, const double cov);
 
-//  using map_t = std::map<std::string, double>;
-//  void UpdateValues(const map_t& values);
-//  void UpdateSigmas(const map_t& sigmas);
-
   // some printout formatting stuff
   // used in overloaded << operators
   struct PrintFormatting {
@@ -193,7 +189,7 @@ private:
   std::vector< std::function<double()> > F_func;
   std::map<std::string, size_t> X_s2i; // from varname to index in X
 
-  // since APLCON is stateful, multiple instances of KinFit
+  // since APLCON is stateful, multiple instances of this class
   // need to init APLCON again after switching between them
   // However, when always the same instance is run, we don't need
   // to init APLCON
@@ -279,7 +275,7 @@ private:
 // templated methods must be implemented in header file
 
 template<typename T>
-void KinFit::AddConstraint(const std::string& name,
+void APLCON::AddConstraint(const std::string& name,
                    const std::vector<std::string>& varnames,
                    T constraint)
 {
@@ -292,7 +288,7 @@ void KinFit::AddConstraint(const std::string& name,
 }
 
 template<typename T>
-void KinFit::TestName(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
+void APLCON::TestName(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
   if(name.empty()) {
     throw std::logic_error(tag+" name empty");
   }
@@ -301,11 +297,10 @@ void KinFit::TestName(const std::string& tag, const std::string& name, std::map<
   }
 }
 
-//std::ostream& operator<< (std::ostream&, const std::vector<KinFit::Result_Variable_t>&);
-std::ostream& operator<< (std::ostream&, const KinFit::Limit_t&);
-std::ostream& operator<< (std::ostream&, const KinFit::Distribution_t&);
-std::ostream& operator<< (std::ostream&, const KinFit::Result_Status_t&);
-std::ostream& operator<< (std::ostream&, const KinFit::Result_t&);
+std::ostream& operator<< (std::ostream&, const APLCON::Limit_t&);
+std::ostream& operator<< (std::ostream&, const APLCON::Distribution_t&);
+std::ostream& operator<< (std::ostream&, const APLCON::Result_Status_t&);
+std::ostream& operator<< (std::ostream&, const APLCON::Result_t&);
 
 
-#endif // KINFIT_H
+#endif // APLCON_HPP

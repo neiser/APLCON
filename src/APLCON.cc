@@ -13,17 +13,16 @@ extern "C" {
 #include "wrapper/APLCON.h"
 }
 
-
 using namespace std;
 
-int KinFit::instance_counter = 0;
-int KinFit::instance_lastfit = 0;
-const KinFit::Limit_t KinFit::Limit_t::NoLimit = {
+int APLCON::instance_counter = 0;
+int APLCON::instance_lastfit = 0;
+const APLCON::Limit_t APLCON::Limit_t::NoLimit = {
   numeric_limits<double>::quiet_NaN(),
   numeric_limits<double>::quiet_NaN()
 };
 // set in Init() method
-const KinFit::Fit_Settings_t KinFit::Fit_Settings_t::Default = {
+const APLCON::Fit_Settings_t APLCON::Fit_Settings_t::Default = {
   0,  // no debug printout
   -1, // default max iterations
   numeric_limits<double>::quiet_NaN(),
@@ -32,8 +31,8 @@ const KinFit::Fit_Settings_t KinFit::Fit_Settings_t::Default = {
   numeric_limits<double>::quiet_NaN()
 };
 
-void KinFit::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
-                                 const KinFit::Distribution_t distribution,
+void APLCON::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
+                                 const APLCON::Distribution_t distribution,
                                  const Limit_t limit,
                                  const double stepSize)
 {
@@ -46,7 +45,7 @@ void KinFit::AddMeasuredVariable(const std::string &name, const double value, co
   AddVariable(name, value, sigma, distribution, limit, stepSize);
 }
 
-void KinFit::AddUnmeasuredVariable(const string &name, const double value,
+void APLCON::AddUnmeasuredVariable(const string &name, const double value,
                                    const Limit_t limit,
                                    const double stepSize)
 {
@@ -57,7 +56,7 @@ void KinFit::AddUnmeasuredVariable(const string &name, const double value,
   AddVariable(name, value, 0, Distribution_t::Gaussian, limit, stepSize);
 }
 
-void KinFit::AddFixedVariable(const string &name, const double value, const double sigma,
+void APLCON::AddFixedVariable(const string &name, const double value, const double sigma,
                               const Distribution_t distribution)
 {
   if(sigma == 0) {
@@ -68,7 +67,7 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
   AddVariable(name, value, sigma, distribution, Limit_t::NoLimit, 0);
 }
 
-void KinFit::AddCovariance(const string &var1, const string &var2, const double cov)
+void APLCON::AddCovariance(const string &var1, const string &var2, const double cov)
 {
   if(var1.empty() || var2.empty()) {
     throw logic_error("Variable names cannot be empty strings");
@@ -83,7 +82,7 @@ void KinFit::AddCovariance(const string &var1, const string &var2, const double 
   initialized = false;
 }
 
-KinFit::Result_t KinFit::DoFit()
+APLCON::Result_t APLCON::DoFit()
 {
   // ensure that APLCON is properly initialized
   // and the value vectors X, F, V
@@ -190,7 +189,7 @@ KinFit::Result_t KinFit::DoFit()
   return result;
 }
 
-void KinFit::Init()
+void APLCON::Init()
 {
   // tell APLCON the number of variables and the number of constraints
   // this call is always needed before the c_aplcon_aploop calls
@@ -310,8 +309,8 @@ void KinFit::Init()
   instance_lastfit = instance_id;
 }
 
-void KinFit::AddVariable(const string &name, const double value, const double sigma,
-                         const KinFit::Distribution_t distribution,
+void APLCON::AddVariable(const string &name, const double value, const double sigma,
+                         const APLCON::Distribution_t distribution,
                          const Limit_t limit,
                          const double stepSize)
 {
@@ -333,26 +332,26 @@ void KinFit::AddVariable(const string &name, const double value, const double si
 
 // finally the ostream implementation for nice (debug) printout
 
-const string KinFit::PrintFormatting::Indent = "   ";
-const string KinFit::PrintFormatting::Marker = ">> ";
-const int KinFit::PrintFormatting::Width = 10;
+const string APLCON::PrintFormatting::Indent = "   ";
+const string APLCON::PrintFormatting::Marker = ">> ";
+const int APLCON::PrintFormatting::Width = 13;
 
-std::ostream& operator<< (std::ostream& o, const KinFit::Limit_t& l) {
+std::ostream& operator<< (std::ostream& o, const APLCON::Limit_t& l) {
   return o << "(" << l.Low << ", " << l.High << ")";
 }
 
-std::ostream& operator<< (std::ostream& o, const KinFit::Distribution_t& d) {
+std::ostream& operator<< (std::ostream& o, const APLCON::Distribution_t& d) {
   switch (d) {
-  case KinFit::Distribution_t::Gaussian:
+  case APLCON::Distribution_t::Gaussian:
     o << "Gaussian";
     break;
-  case KinFit::Distribution_t::LogNormal:
+  case APLCON::Distribution_t::LogNormal:
     o << "LogNormal";
     break;
-  case KinFit::Distribution_t::Poissonian:
+  case APLCON::Distribution_t::Poissonian:
     o << "Poissonian";
     break;
-  case KinFit::Distribution_t::SquareRoot:
+  case APLCON::Distribution_t::SquareRoot:
     o << "SquareRoot";
     break;
   default:
@@ -362,24 +361,24 @@ std::ostream& operator<< (std::ostream& o, const KinFit::Distribution_t& d) {
   return o;
 }
 
-std::ostream& operator<< (std::ostream& o, const KinFit::Result_Status_t& s) {
+std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
   switch (s) {
-  case KinFit::Result_Status_t::Success:
+  case APLCON::Result_Status_t::Success:
     o << "Success";
     break;
-  case KinFit::Result_Status_t::NoConvergence:
+  case APLCON::Result_Status_t::NoConvergence:
     o << "NoConvergence";
     break;
-  case KinFit::Result_Status_t::TooManyIterations:
+  case APLCON::Result_Status_t::TooManyIterations:
     o << "TooManyIterations";
     break;
-  case KinFit::Result_Status_t::UnphysicalValues:
+  case APLCON::Result_Status_t::UnphysicalValues:
     o << "UnphysicalValues";
     break;
-  case KinFit::Result_Status_t::NegativeDoF:
+  case APLCON::Result_Status_t::NegativeDoF:
     o << "NegativeDoF";
     break;
-  case KinFit::Result_Status_t::OutOfMemory:
+  case APLCON::Result_Status_t::OutOfMemory:
     o << "OutOfMemory";
     break;
   default:
@@ -402,11 +401,12 @@ string stringify(const vector<T>& c, F f) {
 }
 
 template<typename F>
-string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, const string& in, F f) {
-  const int w = KinFit::PrintFormatting::Width+5;
+string stringify_contraints(const vector<APLCON::Result_Variable_t>& variables, const string& in, F f) {
+  const int w = APLCON::PrintFormatting::Width;
+  const int w_varname = APLCON::PrintFormatting::Width+5;
   stringstream o;
   o << in << "Covariances: " << endl;
-  o << in << setw(w) << " ";
+  o << in << setw(w_varname) << " ";
   for(size_t i=0;i<variables.size();i++) {
     stringstream i_;
     i_ << "(" << i << ")";
@@ -414,17 +414,17 @@ string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, 
   }
   o << endl;
   for(size_t i=0;i<variables.size();i++) {
-    const KinFit::Result_Variable_t& v = variables[i];
+    const APLCON::Result_Variable_t& v = variables[i];
     stringstream i_;
     i_ << "(" << i << ") ";
-    o << in << setw(4) << i_.str() << " " << setw(10) << v.Name;
+    o << in << setw(4) << i_.str() << " " << setw(w_varname-5) << v.Name;
     const vector<double>& cov = f(v);
     for(size_t j=0;j<cov.size();j++) {
       o << setw(w) << cov[j];
     }
     o << endl;
   }
-  o << in << setw(w) << " ";
+  o << in << setw(w_varname) << " ";
   for(size_t i=0;i<variables.size();i++) {
     stringstream i_;
     i_ << "(" << i << ")";
@@ -435,74 +435,69 @@ string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, 
   return o.str();
 }
 
-string stringify_variables(const vector<KinFit::Result_Variable_t>& variables, const string& extra_indent = "") {
+string stringify_variables(const vector<APLCON::Result_Variable_t>& variables, const string& extra_indent = "") {
   stringstream o;
-  const int w = KinFit::PrintFormatting::Width;
-  const string& in = extra_indent + KinFit::PrintFormatting::Indent;
-  const string& ma = extra_indent + KinFit::PrintFormatting::Marker;
+  const int w = APLCON::PrintFormatting::Width;
+  const string& in = extra_indent + APLCON::PrintFormatting::Indent;
+  const string& ma = extra_indent + APLCON::PrintFormatting::Marker;
   // print stuff before the Fit
   o << ma << "Before Fit:" << endl << endl;
   o << in
-    << left << setw(w) << "Name" << internal
+    << left << setw(w) << "Name" << right
     << setw(w)   << "Value"
     << setw(w)   << "Sigma"
-    << left << setw(2*w) << "   Settings" << internal
+    << left << setw(2*w) << "   Settings" << right
     << endl;
-  for(const KinFit::Result_Variable_t& v : variables) {
+  for(const APLCON::Result_Variable_t& v : variables) {
     stringstream settings;
     settings << "   " << v.Settings.Distribution << " " << v.Settings.Limit << " " << v.Settings.StepSize;
     o << in
-      << left << setw(w) << v.Name << internal
+      << left << setw(w) << v.Name << right
       << setw(w) << v.Value.Before
       << setw(w) << v.Sigma.Before
-      << left << setw(2*w) << settings.str() << internal
+      << left << setw(2*w) << settings.str() << right
       << endl;
   }
   o << endl;
 
-  o << stringify_contraints(variables, in, [](const KinFit::Result_Variable_t& v) {return v.Covariances.Before;});
+  o << stringify_contraints(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
 
   // print stuff after the fit
   o << ma << "After Fit:" << endl << endl;
   o << in
-    << left << setw(w) << "Variable" << internal
+    << left << setw(w) << "Variable" << right
     << setw(w) << "Value"
     << setw(w) << "Sigma"
     << setw(w) << "Pull"
     << endl;
-  for(const auto& v : variables) {
+  for(const APLCON::Result_Variable_t& v : variables) {
     o << in
-      << left << setw(w) << v.Name << internal
-      << setw(w) << v.Value.After << "  "
-      << setw(w) << v.Sigma.After << "  "
+      << left << setw(w) << v.Name << right
+      << setw(w) << v.Value.After
+      << setw(w) << v.Sigma.After
       << setw(w) << v.Pull
       << endl;
   }
   o << endl;
 
-  o << stringify_contraints(variables, in, [](const KinFit::Result_Variable_t& v) {return v.Covariances.After;});
+  o << stringify_contraints(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
 
   return o.str();
 
 }
 
-//ostream& operator<< (ostream& o, const std::vector<KinFit::Result_Variable_t>& variables) {
-//  return o << stringify_variables(variables);
-//}
-
-
-ostream& operator<< (ostream& o, const KinFit::Result_t& r) {
-  const string& in = KinFit::PrintFormatting::Indent;
-  const string& ma = KinFit::PrintFormatting::Marker;
+ostream& operator<< (ostream& o, const APLCON::Result_t& r) {
+  const string& in = APLCON::PrintFormatting::Indent;
+  const string& ma = APLCON::PrintFormatting::Marker;
 
   // general info
-  o << ma << (r.Name==""?"KinFit":r.Name) << " with " << r.Variables.size() << " variables and "
+  o << ma << (r.Name==""?"APLCON":r.Name) << " with " << r.Variables.size() << " variables and "
     << r.Constraints.size() << " constraints:" << endl;
   o << in << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << endl;
   o << in << "Constraints: " <<
        stringify(r.Constraints, [](const string& v) {return v;}) << endl << endl;
 
-  if(r.Status == KinFit::Result_Status_t::Success)
+  if(r.Status == APLCON::Result_Status_t::Success)
     o << stringify_variables(r.Variables, in);
   return o;
 }
