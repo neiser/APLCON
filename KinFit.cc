@@ -327,33 +327,87 @@ string stringify(const vector<T>& c, F f) {
   return o.str();
 }
 
-
-
+template<typename F>
+string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, F f) {
+  const string& in = "   "; // indent
+  const int w = 15;
+  stringstream o;
+  o << in<<in << "Covariances: " << endl;
+  o << in<<in << setw(w) << " ";
+  for(size_t i=0;i<variables.size();i++) {
+    stringstream i_;
+    i_ << "(" << i << ")";
+    o << setw(w) << i_.str();
+  }
+  o << endl;
+  for(size_t i=0;i<variables.size();i++) {
+    const KinFit::Result_Variable_t& v = variables[i];
+    stringstream i_;
+    i_ << "(" << i << ") ";
+    o << in<<in << setw(4) << i_.str() << " " << setw(10) << v.Name;
+    const vector<double>& cov = f(v);
+    for(size_t j=0;j<cov.size();j++) {
+      o << setw(w) << cov[j];
+    }
+    o << endl;
+  }
+  o << in<<in << setw(w) << " ";
+  for(size_t i=0;i<variables.size();i++) {
+    stringstream i_;
+    i_ << "(" << i << ")";
+    o << setw(w) << i_.str();
+  }
+  o << endl;
+  o << endl;
+  return o.str();
+}
 
 ostream& operator<< (ostream& o, const KinFit::Result_t& r) {
-  o << ">> " << (r.Name==""?"KinFit":r.Name) << " with " << r.Variables.size() << " variables and "
+  const string& in = "   "; // indent
+  const string& ma = ">> "; // marker
+  const int w = 10;
+
+  // general info
+  o << ma << (r.Name==""?"KinFit":r.Name) << " with " << r.Variables.size() << " variables and "
     << r.Constraints.size() << " constraints:" << endl;
-  o << "   " << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << endl;
-  //o << "   Variables:   " <<
-  //     stringify(r.Variables, [](const KinFit::Result_Variable_t& v) {return v.Name;}) << endl;
-  o << "   Constraints: " <<
-       stringify(r.Constraints, [](const string& v) {return v;}) << endl;
-  o << "   Before Fit:" << endl;
-  o << scientific << setprecision(2);
+  o << in << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << endl;
+  o << in << "Constraints: " <<
+       stringify(r.Constraints, [](const string& v) {return v;}) << endl << endl;
+
+  // print stuff before the Fit
+  o << in<<ma << "Before Fit:" << endl;
+  o << in<<in << setw(w) << "Name"
+    << setw(w) << "Value"
+    << setw(w) << "Sigma"
+    << endl;
   for(const auto& v : r.Variables) {
-    o << "   " << setw(10) << v.Name
-      << setw(10) << v.Value.Before
-      << setw(10) << v.Sigma.Before
+    o << in<<in << setw(w) << v.Name
+      << setw(w) << v.Value.Before << "  "
+      << setw(w) << v.Sigma.Before << "  "
       << endl;
   }
-  o << "   After Fit:" << endl;
+  o << endl;
+
+  o << stringify_contraints(r.Variables, [](const KinFit::Result_Variable_t& v) {return v.Covariances.Before;});
+
+  // print stuff after the fit
+  o << in<<ma << "After Fit:" << endl;
+  o << in<<in << setw(w) << "Name"
+    << setw(w) << "Value"
+    << setw(w) << "Sigma"
+    << setw(w) << "Pull"
+    << endl;
   for(const auto& v : r.Variables) {
-    o << "   " << setw(10) << v.Name
-      << setw(10) << v.Value.After
-      << setw(10) << v.Sigma.After
-      << setw(10) <<  v.Pull
+    o << in<<in << setw(w) << v.Name
+      << setw(w) << v.Value.After << "  "
+      << setw(w) << v.Sigma.After << "  "
+      << setw(w) << v.Pull
       << endl;
   }
+  o << endl;
+
+  o << stringify_contraints(r.Variables, [](const KinFit::Result_Variable_t& v) {return v.Covariances.After;});
+
   return o;
 }
 
