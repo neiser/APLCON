@@ -18,11 +18,16 @@
 class KinFit
 {
 public:
-  KinFit(const std::string& name = "") :
-    instance_name(name),
-    initialized(false),
-    instance_id(++instance_counter)
-  {}
+
+  struct Fit_Settings_t {
+    int DebugLevel;
+    int MaxIterations;
+    double ConstraintAccuracy;
+    double MeasuredStepSizeFactor;
+    double UnmeasuredStepSizeFactor;
+    double MinimalStepSizeFactor;
+    const static Fit_Settings_t Default;
+  };
 
   enum class Distribution_t {
     Gaussian,
@@ -30,6 +35,7 @@ public:
     LogNormal,
     SquareRoot
   };
+
 
   struct Limit_t {
     double Low;
@@ -85,6 +91,15 @@ public:
     std::vector<Result_Variable_t> Variables;
     std::vector<std::string> Constraints;
   };
+
+
+  KinFit(const std::string& _name = "",
+         const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default) :
+    instance_name(_name),
+    initialized(false),
+    instance_id(++instance_counter),
+    fit_settings(_fit_settings)
+  {}
 
   Result_t DoFit();
 
@@ -187,6 +202,9 @@ private:
   static int instance_counter; // global instance counter (never decremented)
   static int instance_lastfit; // save last instance id
   int instance_id;
+
+  // global APLCON settings
+  Fit_Settings_t fit_settings;
 
   void Init();
   void AddVariable(const std::string& name, const double value, const double sigma,

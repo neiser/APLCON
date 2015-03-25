@@ -22,6 +22,15 @@ const KinFit::Limit_t KinFit::Limit_t::NoLimit = {
   numeric_limits<double>::quiet_NaN(),
   numeric_limits<double>::quiet_NaN()
 };
+// set in Init() method
+const KinFit::Fit_Settings_t KinFit::Fit_Settings_t::Default = {
+  0,  // no debug printout
+  -1, // default max iterations
+  numeric_limits<double>::quiet_NaN(),
+  numeric_limits<double>::quiet_NaN(),
+  numeric_limits<double>::quiet_NaN(),
+  numeric_limits<double>::quiet_NaN()
+};
 
 void KinFit::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
                                  const KinFit::Distribution_t distribution,
@@ -55,7 +64,7 @@ void KinFit::AddFixedVariable(const string &name, const double value, const doub
     throw logic_error("Fixed variables need non-zero sigma. By definition, they are unmeasured then.");
   }
   // fixed variables have stepSize of 0
-  // and limits don't apply
+  // and limits don't apply (probably?)
   AddVariable(name, value, sigma, distribution, Limit_t::NoLimit, 0);
 }
 
@@ -190,9 +199,18 @@ void KinFit::Init()
   if(initialized && instance_id == instance_lastfit)
     return;
 
-  c_aplcon_aprint(0,0); // no output on stdout from now on
-
-  // TODO: init more APLCON stuff like step sizes and so on...
+  // setup APLCON itself
+  c_aplcon_aprint(0,fit_settings.DebugLevel); // default output on LUNP 0
+  if(isfinite(fit_settings.ConstraintAccuracy))
+    c_aplcon_apdeps(fit_settings.ConstraintAccuracy);
+  if(fit_settings.MaxIterations>=0)
+    c_aplcon_apiter(fit_settings.MaxIterations);
+  if(isfinite(fit_settings.MeasuredStepSizeFactor))
+    c_aplcon_apderf(fit_settings.MeasuredStepSizeFactor);
+  if(isfinite(fit_settings.UnmeasuredStepSizeFactor))
+    c_aplcon_apderu(fit_settings.UnmeasuredStepSizeFactor);
+  if(isfinite(fit_settings.MinimalStepSizeFactor))
+    c_aplcon_apdlow(fit_settings.MinimalStepSizeFactor);
 
   // build the storage arrays for APLCON
 
@@ -208,13 +226,37 @@ void KinFit::Init()
   X.resize(variables.size());
   auto it_vars = variables.cbegin(); // use const iterator
   X_s2i.clear(); // clear the map
-  //X_i2s.resize(variables.size());
   for(size_t i = 0; i < X.size() && it_vars != variables.cend() ; ++i, ++it_vars) {
     const Variable_t& var = it_vars->second;
     X[i] = var.Value; // copy initial values
     X_s2i[it_vars->first] = i;
     const size_t V_i = (i+1)*(i+2)/2-1;
     V[V_i] = pow(var.Sigma,2);
+
+    // setup APLCON variable specific things
+    switch (var.Settings.Distribution) {
+    case Distribution_t::Gaussian:
+      // thats the APLCON default
+      break;
+    case Distribution_t::Poissonian:
+      c_aplcon_apoiss(i);
+      break;
+    case Distribution_t::LogNormal:
+      c_aplcon_aplogn(i);
+      break;
+    case Distribution_t::SquareRoot:
+      c_aplcon_apsqrt(i);
+      break;
+    // APLCON exposes even more transformations (see wrapper),
+    // but they're not mentioned in the README...
+    default:
+      break;
+    }
+
+    if(isfinite(var.Settings.Limit.Low) && isfinite(var.Settings.Limit.High))
+      c_aplcon_aplimt(i, var.Settings.Limit.Low, var.Settings.Limit.High);
+    if(isfinite(var.Settings.StepSize))
+      c_aplcon_apstep(i, var.Settings.StepSize);
   }
 
   // F will be set by APLCON iteration loop in DoFit
