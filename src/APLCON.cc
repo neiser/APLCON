@@ -1,4 +1,4 @@
-#include "KinFit.h"
+#include "APLCON.hpp"
 
 #include <stdexcept>
 #include <cmath>
@@ -10,7 +10,7 @@
 
 
 extern "C" {
-#include "APLCON_wrapper.h"
+#include "wrapper/APLCON.h"
 }
 
 

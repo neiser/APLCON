@@ -3,7 +3,7 @@ project(APLCON Fortran)
 
 # those flags (from original Makefile) are crucial to make the program run properly
 # otherwise you end up in an endless loop
-set(CMAKE_Fortran_FLAGS "-Wunused  -fno-automatic -fno-backslash -O")
+set(CMAKE_Fortran_FLAGS "-Wunused -fno-automatic -fno-backslash -O")
 
 # build the library (static)
 set(SRCS_LIB
@@ -17,13 +17,16 @@ set(SRCS_LIB
   dcsplines.F
   fpl.F
   )
-add_library(aplcon ${SRCS_LIB})
+add_library(aplcon SHARED ${SRCS_LIB})
 
-# link the test program against it
-set(SRCS_TEST
-  test/avlass.F
-  test/avvsys.F
-  test/avmain.F
-  )
-add_executable(test_avmain ${SRCS_TEST})
-target_link_libraries(test_avmain aplcon)
+# add test program if built standalone
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+  # link the test program against it
+  set(SRCS_TEST
+    test/avlass.F
+    test/avvsys.F
+    test/avmain.F
+    )
+  add_executable(test_avmain ${SRCS_TEST})
+  target_link_libraries(test_avmain aplcon)
+endif()
