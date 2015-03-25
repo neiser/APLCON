@@ -148,6 +148,14 @@ public:
 //  void UpdateValues(const map_t& values);
 //  void UpdateSigmas(const map_t& sigmas);
 
+  // some printout formatting stuff
+  // used in overloaded << operators
+  struct PrintFormatting {
+    const static std::string Indent;
+    const static std::string Marker;
+    const static int Width;
+  };
+
 private:
   struct constraint_t {
     std::vector<std::string> VariableNames;
@@ -275,8 +283,9 @@ void KinFit::TestName(const std::string& tag, const std::string& name, std::map<
   }
 }
 
-std::ostream& operator<< (std::ostream& stream, const KinFit::Result_Status_t& o);
-std::ostream& operator<< (std::ostream& stream, const KinFit::Result_t& o);
+//std::ostream& operator<< (std::ostream&, const std::vector<KinFit::Result_Variable_t>&);
+std::ostream& operator<< (std::ostream&, const KinFit::Result_Status_t&);
+std::ostream& operator<< (std::ostream&, const KinFit::Result_t&);
 
 
 #endif // KINFIT_H

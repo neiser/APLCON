@@ -18,5 +18,7 @@ int main() {
   //k.AddCovariance("BF_e_A", "BF_tau_B", 0.1);
   //k.AddCovariance("BF_e_B", "BF_tau_A", 0.2);
 
-  cout << k.DoFit() << endl;
+  const KinFit::Result_t& r = k.DoFit();
+
+  cout << r << endl;
 }

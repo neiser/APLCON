@@ -18,7 +18,10 @@ using namespace std;
 
 int KinFit::instance_counter = 0;
 int KinFit::instance_lastfit = 0;
-const KinFit::Limit_t KinFit::Limit_t::NoLimit = {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
+const KinFit::Limit_t KinFit::Limit_t::NoLimit = {
+  numeric_limits<double>::quiet_NaN(),
+  numeric_limits<double>::quiet_NaN()
+};
 
 void KinFit::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
                                  const KinFit::Distribution_t distribution,
@@ -288,6 +291,11 @@ void KinFit::AddVariable(const string &name, const double value, const double si
 
 // finally the ostream implementation for nice (debug) printout
 
+const string KinFit::PrintFormatting::Indent = "   ";
+const string KinFit::PrintFormatting::Marker = ">> ";
+const int KinFit::PrintFormatting::Width = 10;
+
+
 std::ostream& operator<< (std::ostream& o, const KinFit::Result_Status_t& s) {
   switch (s) {
   case KinFit::Result_Status_t::Success:
@@ -328,12 +336,11 @@ string stringify(const vector<T>& c, F f) {
 }
 
 template<typename F>
-string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, F f) {
-  const string& in = "   "; // indent
-  const int w = 15;
+string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, const string& in, F f) {
+  const int w = KinFit::PrintFormatting::Width+5;
   stringstream o;
-  o << in<<in << "Covariances: " << endl;
-  o << in<<in << setw(w) << " ";
+  o << in << "Covariances: " << endl;
+  o << in << setw(w) << " ";
   for(size_t i=0;i<variables.size();i++) {
     stringstream i_;
     i_ << "(" << i << ")";
@@ -344,14 +351,14 @@ string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, 
     const KinFit::Result_Variable_t& v = variables[i];
     stringstream i_;
     i_ << "(" << i << ") ";
-    o << in<<in << setw(4) << i_.str() << " " << setw(10) << v.Name;
+    o << in << setw(4) << i_.str() << " " << setw(10) << v.Name;
     const vector<double>& cov = f(v);
     for(size_t j=0;j<cov.size();j++) {
       o << setw(w) << cov[j];
     }
     o << endl;
   }
-  o << in<<in << setw(w) << " ";
+  o << in << setw(w) << " ";
   for(size_t i=0;i<variables.size();i++) {
     stringstream i_;
     i_ << "(" << i << ")";
@@ -362,10 +369,57 @@ string stringify_contraints(const vector<KinFit::Result_Variable_t>& variables, 
   return o.str();
 }
 
+string stringify_variables(const vector<KinFit::Result_Variable_t>& variables, const string& extra_indent = "") {
+  stringstream o;
+  const int w = KinFit::PrintFormatting::Width;
+  const string& in = extra_indent + KinFit::PrintFormatting::Indent;
+  const string& ma = extra_indent + KinFit::PrintFormatting::Marker;
+  // print stuff before the Fit
+  o << ma << "Before Fit:" << endl;
+  o << in << setw(w) << "Name"
+    << setw(w) << "Value"
+    << setw(w) << "Sigma"
+    << endl;
+  for(const auto& v : variables) {
+    o << in << setw(w) << v.Name
+      << setw(w) << v.Value.Before << "  "
+      << setw(w) << v.Sigma.Before << "  "
+      << endl;
+  }
+  o << endl;
+
+  o << stringify_contraints(variables, in, [](const KinFit::Result_Variable_t& v) {return v.Covariances.Before;});
+
+  // print stuff after the fit
+  o << ma << "After Fit:" << endl;
+  o << in << setw(w) << "Name"
+    << setw(w) << "Value"
+    << setw(w) << "Sigma"
+    << setw(w) << "Pull"
+    << endl;
+  for(const auto& v : variables) {
+    o << in << setw(w) << v.Name
+      << setw(w) << v.Value.After << "  "
+      << setw(w) << v.Sigma.After << "  "
+      << setw(w) << v.Pull
+      << endl;
+  }
+  o << endl;
+
+  o << stringify_contraints(variables, in, [](const KinFit::Result_Variable_t& v) {return v.Covariances.After;});
+
+  return o.str();
+
+}
+
+//ostream& operator<< (ostream& o, const std::vector<KinFit::Result_Variable_t>& variables) {
+//  return o << stringify_variables(variables);
+//}
+
+
 ostream& operator<< (ostream& o, const KinFit::Result_t& r) {
-  const string& in = "   "; // indent
-  const string& ma = ">> "; // marker
-  const int w = 10;
+  const string& in = KinFit::PrintFormatting::Indent;
+  const string& ma = KinFit::PrintFormatting::Marker;
 
   // general info
   o << ma << (r.Name==""?"KinFit":r.Name) << " with " << r.Variables.size() << " variables and "
@@ -374,40 +428,7 @@ ostream& operator<< (ostream& o, const KinFit::Result_t& r) {
   o << in << "Constraints: " <<
        stringify(r.Constraints, [](const string& v) {return v;}) << endl << endl;
 
-  // print stuff before the Fit
-  o << in<<ma << "Before Fit:" << endl;
-  o << in<<in << setw(w) << "Name"
-    << setw(w) << "Value"
-    << setw(w) << "Sigma"
-    << endl;
-  for(const auto& v : r.Variables) {
-    o << in<<in << setw(w) << v.Name
-      << setw(w) << v.Value.Before << "  "
-      << setw(w) << v.Sigma.Before << "  "
-      << endl;
-  }
-  o << endl;
-
-  o << stringify_contraints(r.Variables, [](const KinFit::Result_Variable_t& v) {return v.Covariances.Before;});
-
-  // print stuff after the fit
-  o << in<<ma << "After Fit:" << endl;
-  o << in<<in << setw(w) << "Name"
-    << setw(w) << "Value"
-    << setw(w) << "Sigma"
-    << setw(w) << "Pull"
-    << endl;
-  for(const auto& v : r.Variables) {
-    o << in<<in << setw(w) << v.Name
-      << setw(w) << v.Value.After << "  "
-      << setw(w) << v.Sigma.After << "  "
-      << setw(w) << v.Pull
-      << endl;
-  }
-  o << endl;
-
-  o << stringify_contraints(r.Variables, [](const KinFit::Result_Variable_t& v) {return v.Covariances.After;});
-
+  if(r.Status == KinFit::Result_Status_t::Success)
+    o << stringify_variables(r.Variables, in);
   return o;
 }
-
