@@ -92,8 +92,8 @@ public:
     std::vector<std::string> Constraints;
   };
 
-
-  APLCON(const std::string& _name = "",
+  // the usual constructor
+  APLCON(const std::string& _name,
          const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default) :
     instance_name(_name),
     initialized(false),
@@ -101,6 +101,8 @@ public:
     fit_settings(_fit_settings)
   {}
 
+  // copy the instance,
+  // but with new name and possibly new settings
   APLCON(const APLCON& _old,
          const std::string& _name,
          const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default)
@@ -167,7 +169,7 @@ public:
                      const std::vector<std::string>& varnames,
                      T constraint);
 
-  void AddCovariance(const std::string& var1, const std::string& var2, const double cov);
+  void SetCovariance(const std::string& var1, const std::string& var2, const double cov);
 
   // some printout formatting stuff
   // used in overloaded << operators

@@ -67,19 +67,30 @@ void APLCON::AddFixedVariable(const string &name, const double value, const doub
   AddVariable(name, value, sigma, distribution, Limit_t::NoLimit, 0);
 }
 
-void APLCON::AddCovariance(const string &var1, const string &var2, const double cov)
+void APLCON::SetCovariance(const string &var1, const string &var2, const double cov)
 {
   if(var1.empty() || var2.empty()) {
     throw logic_error("Variable names cannot be empty strings");
   }
+  // assume covariance is gonna changed...
+  initialized = false;
+
+  // search the covariances map
+  // but note that the pairs are symmetric
   const pair<string, string>& p1 = make_pair(var1, var2);
   const pair<string, string>& p2 = make_pair(var2, var1);
-  if(covariances.find(p1) != covariances.end() ||
-     covariances.find(p2) != covariances.end()) {
-    throw logic_error("Covariance between '"+var1+"' and '"+var2+"' already added.");
+  auto it1 = covariances.find(p1);
+  if(it1 != covariances.end()) {
+    it1->second = cov;
+    return;
   }
-  covariances[p1] = cov;
-  initialized = false;
+  auto it2 = covariances.find(p2);
+  if(it2 != covariances.end()) {
+    it2->second = cov;
+    return;
+  }
+  // not found, then add it
+  covariances.insert(make_pair(p1, cov));
 }
 
 APLCON::Result_t APLCON::DoFit()
@@ -430,7 +441,6 @@ string stringify_contraints(const vector<APLCON::Result_Variable_t>& variables, 
     i_ << "(" << i << ")";
     o << setw(w) << i_.str();
   }
-  o << endl;
   o << endl;
   return o.str();
 }
