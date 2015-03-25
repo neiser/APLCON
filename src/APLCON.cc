@@ -494,6 +494,8 @@ ostream& operator<< (ostream& o, const APLCON::Result_t& r) {
   o << ma << (r.Name==""?"APLCON":r.Name) << " with " << r.Variables.size() << " variables and "
     << r.Constraints.size() << " constraints:" << endl;
   o << in << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << endl;
+  o << in << "Chi^2 / DoF = " << r.ChiSquare << " / " << r.NDoF << " = " << r.ChiSquare/r.NDoF << endl;
+  o << in << "Probability = " << r.Probability << endl;
   o << in << "Constraints: " <<
        stringify(r.Constraints, [](const string& v) {return v;}) << endl << endl;
 
