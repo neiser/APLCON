@@ -295,6 +295,30 @@ const string KinFit::PrintFormatting::Indent = "   ";
 const string KinFit::PrintFormatting::Marker = ">> ";
 const int KinFit::PrintFormatting::Width = 10;
 
+std::ostream& operator<< (std::ostream& o, const KinFit::Limit_t& l) {
+  return o << "(" << l.Low << ", " << l.High << ")";
+}
+
+std::ostream& operator<< (std::ostream& o, const KinFit::Distribution_t& d) {
+  switch (d) {
+  case KinFit::Distribution_t::Gaussian:
+    o << "Gaussian";
+    break;
+  case KinFit::Distribution_t::LogNormal:
+    o << "LogNormal";
+    break;
+  case KinFit::Distribution_t::Poissonian:
+    o << "Poissonian";
+    break;
+  case KinFit::Distribution_t::SquareRoot:
+    o << "SquareRoot";
+    break;
+  default:
+    throw logic_error("Unkown Distribution_t in ostream");
+    break;
+  }
+  return o;
+}
 
 std::ostream& operator<< (std::ostream& o, const KinFit::Result_Status_t& s) {
   switch (s) {
@@ -375,15 +399,21 @@ string stringify_variables(const vector<KinFit::Result_Variable_t>& variables, c
   const string& in = extra_indent + KinFit::PrintFormatting::Indent;
   const string& ma = extra_indent + KinFit::PrintFormatting::Marker;
   // print stuff before the Fit
-  o << ma << "Before Fit:" << endl;
-  o << in << setw(w) << "Name"
-    << setw(w) << "Value"
-    << setw(w) << "Sigma"
+  o << ma << "Before Fit:" << endl << endl;
+  o << in
+    << left << setw(w) << "Name" << internal
+    << setw(w)   << "Value"
+    << setw(w)   << "Sigma"
+    << left << setw(2*w) << "   Settings" << internal
     << endl;
-  for(const auto& v : variables) {
-    o << in << setw(w) << v.Name
-      << setw(w) << v.Value.Before << "  "
-      << setw(w) << v.Sigma.Before << "  "
+  for(const KinFit::Result_Variable_t& v : variables) {
+    stringstream settings;
+    settings << "   " << v.Settings.Distribution << " " << v.Settings.Limit << " " << v.Settings.StepSize;
+    o << in
+      << left << setw(w) << v.Name << internal
+      << setw(w) << v.Value.Before
+      << setw(w) << v.Sigma.Before
+      << left << setw(2*w) << settings.str() << internal
       << endl;
   }
   o << endl;
@@ -391,14 +421,16 @@ string stringify_variables(const vector<KinFit::Result_Variable_t>& variables, c
   o << stringify_contraints(variables, in, [](const KinFit::Result_Variable_t& v) {return v.Covariances.Before;});
 
   // print stuff after the fit
-  o << ma << "After Fit:" << endl;
-  o << in << setw(w) << "Name"
+  o << ma << "After Fit:" << endl << endl;
+  o << in
+    << left << setw(w) << "Variable" << internal
     << setw(w) << "Value"
     << setw(w) << "Sigma"
     << setw(w) << "Pull"
     << endl;
   for(const auto& v : variables) {
-    o << in << setw(w) << v.Name
+    o << in
+      << left << setw(w) << v.Name << internal
       << setw(w) << v.Value.After << "  "
       << setw(w) << v.Sigma.After << "  "
       << setw(w) << v.Pull

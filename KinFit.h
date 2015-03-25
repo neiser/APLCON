@@ -284,6 +284,8 @@ void KinFit::TestName(const std::string& tag, const std::string& name, std::map<
 }
 
 //std::ostream& operator<< (std::ostream&, const std::vector<KinFit::Result_Variable_t>&);
+std::ostream& operator<< (std::ostream&, const KinFit::Limit_t&);
+std::ostream& operator<< (std::ostream&, const KinFit::Distribution_t&);
 std::ostream& operator<< (std::ostream&, const KinFit::Result_Status_t&);
 std::ostream& operator<< (std::ostream&, const KinFit::Result_t&);
 
