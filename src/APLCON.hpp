@@ -5,7 +5,6 @@
 #include <map>
 #include <functional>
 #include <limits>
-#include <assert.h>
 #include <type_traits>
 #include <stdexcept>
 
@@ -40,13 +39,13 @@ public:
   struct Limit_t {
     double Low;
     double High;
-    const static Limit_t NoLimit;
   };
 
   struct Variable_Settings_t {
     Distribution_t Distribution;
     Limit_t Limit;
     double StepSize;
+    const static Variable_Settings_t Default;
   };
 
   struct Variable_t {
@@ -126,12 +125,9 @@ public:
    * @param stepSize step size for numerical derivation
    */
   void AddMeasuredVariable(const std::string& name,
-                           const double value = std::numeric_limits<double>::quiet_NaN(),
-                           const double sigma = std::numeric_limits<double>::quiet_NaN(),
-                           const Distribution_t distribution = Distribution_t::Gaussian,
-                           const Limit_t limit = Limit_t::NoLimit,
-                           const double stepSize = std::numeric_limits<double>::quiet_NaN()
-      );
+                           const double value = NaN,
+                           const double sigma = NaN,
+                           const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief AddUnmeasuredVariable
    * @param name unique label for variable
@@ -141,10 +137,8 @@ public:
    * @param stepSize step size for numerical derivation
    */
   void AddUnmeasuredVariable(const std::string& name,
-                             const double value = std::numeric_limits<double>::quiet_NaN(),
-                             const Limit_t limit = Limit_t::NoLimit,
-                             const double stepSize = std::numeric_limits<double>::quiet_NaN()
-      );
+                             const double value = NaN,
+                             const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief AddFixedVariable
    * @param name unique label for variable
@@ -153,9 +147,9 @@ public:
    * @param distribution optional type of distribution
    */
   void AddFixedVariable(const std::string& name,
-                        const double value = std::numeric_limits<double>::quiet_NaN(),
-                        const double sigma = std::numeric_limits<double>::quiet_NaN(),
-                        const Distribution_t distribution = Distribution_t::Gaussian
+                        const double value = NaN,
+                        const double sigma = NaN,
+                        const Distribution_t& distribution = Distribution_t::Gaussian
       );
 
   /**
@@ -178,6 +172,7 @@ public:
     const static std::string Marker;
     const static int Width;
   };
+
 
 private:
   struct constraint_t {
@@ -216,13 +211,13 @@ private:
 
   void Init();
   void AddVariable(const std::string& name, const double value, const double sigma,
-                   const Distribution_t distribution,
-                   const Limit_t limit,
-                   const double stepSize
-                   );
+                   const APLCON::Variable_Settings_t& settings);
   template<typename T>
   void TestName(const std::string& tag, const std::string& name,
                 std::map<std::string, T> c);
+
+  // shortcuts for double limits (used in default values for methods above)
+  const static double NaN;
 
   // some extra stuff for having a nice constraint interface
 
@@ -242,7 +237,7 @@ private:
   };
 
   template <typename L>
-  typename function_traits<L>::f_type make_function(L l) {
+  typename function_traits<L>::f_type make_function(L l) const {
     return (typename function_traits<L>::f_type)(l);
   }
 
@@ -269,14 +264,14 @@ private:
   struct build_indices<0, Is...> : indices<Is...> {};
 
   template <typename FuncType, size_t... I>
-  std::function<double(const std::vector<const double*>&)> bind_constraint(const FuncType& f, indices<I...>) const {
+  std::function<double(const std::vector<const double*>&)>
+  bind_constraint(const FuncType& f, indices<I...>) const {
     // "vectorize" the given constraint function f to fv
     // by defining a lambda fv which is bound to the original f
     // then fv can be called on vectors containing pointers to the values
     // on which the constraint should be evaluated
     // see DoFit how this is actually done
     auto fv = [] (const FuncType& f, const std::vector<const double*>& x) {
-      assert(x.size() == sizeof...(I));
       return f(*x[I]...);
     };
     return std::bind(fv, f, std::placeholders::_1);
@@ -294,7 +289,9 @@ void APLCON::AddConstraint(const std::string& name,
   TestName("Constraint", name, constraints);
   auto f = make_function(constraint);
   const size_t n = count_arg<decltype(f)>::value;
-  assert(varnames.size() == n);
+  if(varnames.size() != n) {
+    throw std::logic_error("Constraint function argument number does not match the number of varnames.");
+  }
   constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
   initialized = false;
 }

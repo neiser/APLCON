@@ -17,8 +17,14 @@ using namespace std;
 
 int APLCON::instance_counter = 0;
 int APLCON::instance_lastfit = 0;
-const APLCON::Limit_t APLCON::Limit_t::NoLimit = {
-  numeric_limits<double>::quiet_NaN(),
+
+const double APLCON::NaN = numeric_limits<double>::quiet_NaN();
+const APLCON::Variable_Settings_t APLCON::Variable_Settings_t::Default = {
+  APLCON::Distribution_t::Gaussian,
+  {
+    -numeric_limits<double>::infinity(),
+    numeric_limits<double>::infinity()
+  },
   numeric_limits<double>::quiet_NaN()
 };
 // set in Init() method
@@ -32,39 +38,36 @@ const APLCON::Fit_Settings_t APLCON::Fit_Settings_t::Default = {
 };
 
 void APLCON::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
-                                 const APLCON::Distribution_t distribution,
-                                 const Limit_t limit,
-                                 const double stepSize)
+                                 const APLCON::Variable_Settings_t& settings)
 {
   if(sigma == 0) {
     throw logic_error("Measured variables need non-zero sigma. By definition, they are unmeasured then.");
   }
-  if(stepSize == 0) {
+  if(settings.StepSize == 0) {
     throw logic_error("Measured variables need non-zero step size. By definition, they are fixed then.");
   }
-  AddVariable(name, value, sigma, distribution, limit, stepSize);
+  AddVariable(name, value, sigma, settings);
 }
 
 void APLCON::AddUnmeasuredVariable(const string &name, const double value,
-                                   const Limit_t limit,
-                                   const double stepSize)
+                                   const APLCON::Variable_Settings_t& settings)
 {
-  if(stepSize == 0) {
+  if(settings.StepSize == 0) {
     throw logic_error("Unmeasured variables need non-zero step size. By definition, they are fixed then.");
   }
   // unmeasured variables have a sigma of 0
-  AddVariable(name, value, 0, Distribution_t::Gaussian, limit, stepSize);
+  AddVariable(name, value, 0, settings);
 }
 
 void APLCON::AddFixedVariable(const string &name, const double value, const double sigma,
-                              const Distribution_t distribution)
+                              const Distribution_t &distribution)
 {
   if(sigma == 0) {
     throw logic_error("Fixed variables need non-zero sigma. By definition, they are unmeasured then.");
   }
   // fixed variables have stepSize of 0
   // and limits don't apply (probably?)
-  AddVariable(name, value, sigma, distribution, Limit_t::NoLimit, 0);
+  AddVariable(name, value, sigma, {distribution, Variable_Settings_t::Default.Limit, 0});
 }
 
 void APLCON::SetCovariance(const string &var1, const string &var2, const double cov)
@@ -321,9 +324,7 @@ void APLCON::Init()
 }
 
 void APLCON::AddVariable(const string &name, const double value, const double sigma,
-                         const APLCON::Distribution_t distribution,
-                         const Limit_t limit,
-                         const double stepSize)
+                         const APLCON::Variable_Settings_t& settings)
 {
   // check if variable already exists
   TestName("Variable", name, variables);
@@ -331,9 +332,7 @@ void APLCON::AddVariable(const string &name, const double value, const double si
   Variable_t var;
   var.Value = value;
   var.Sigma = sigma;
-  var.Settings.Distribution = distribution;
-  var.Settings.Limit = limit;
-  var.Settings.StepSize = stepSize;
+  var.Settings = settings;
 
   // add the variable to the map
   variables[name] = var;
