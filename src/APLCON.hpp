@@ -6,8 +6,11 @@
 #include <functional>
 #include <limits>
 #include <stdexcept>
-
+#include <type_traits>
+#include <typeinfo>
 #include <iostream>
+
+
 
 /**
  * @brief The APLCON class
@@ -106,10 +109,10 @@ public:
   APLCON(const APLCON& _old,
          const std::string& _name,
          const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default)
-      : APLCON(_old)
+    : APLCON(_old)
   {
-      instance_name = _name;
-      fit_settings  = _fit_settings;
+    instance_name = _name;
+    fit_settings  = _fit_settings;
   }
 
 
@@ -161,7 +164,7 @@ public:
                     const std::vector<double*>& values,
                     const std::vector<double>& sigmas,
                     const std::vector<Variable_Settings_t>& settings = {}
-                    );
+      );
   /**
    * @brief AddConstraint
    * @param name unique label for the constraint
@@ -174,21 +177,33 @@ public:
                      const T& constraint)
   {
     CheckMapKey("Linked constraint", name, constraints);
-    auto f = make_function(constraint);
-    const size_t n = count_arg<decltype(f)>::value;
+    //auto f = make_function(constraint);
+    //std::cout << f << std::endl;
+    const size_t n = function_traits<T>::n_args;
+    using r_type = typename function_traits<T>::r_type;
+    static_assert(
+          std::is_same<r_type, std::vector<double> >::value ||
+          std::is_same<r_type, double >::value,
+          "Constraint function does not return double or vector of double.");
+    //cout << std::is_same< typename function_traits<F>::r_type, std::vector<double> << endl;
+    //typedef t = function_traits<T>::r_type;
+    //const std::type_info t = func_return_type<decltype(f)>::value;
     if(varnames.size() != n) {
       throw std::logic_error("Constraint function argument number does not match the number of varnames.");
     }
-    constraints[name] = {varnames, bind_linked_constraint(constraint, build_indices<n> {})};
+    //typename function_traits<decltype(f)>::r_type bla;
+    const auto& b = bind_constraint(std::enable_if<function_traits<T>::returns_double>(),
+                                    constraint, build_indices<n>{});
+    constraints[name] = {varnames, b};
     initialized = false;
   }
 
-//  void Test(const std::string& name) {
+  //  void Test(const std::string& name) {
 
-//    std::cout << *(variables[name].Values[0]) << std::endl;
-//    std::cout << variables[name].Values[0] << std::endl;
-//    (*(variables[name].Values[0]))++;
-//  }
+  //    std::cout << *(variables[name].Values[0]) << std::endl;
+  //    std::cout << variables[name].Values[0] << std::endl;
+  //    (*(variables[name].Values[0]))++;
+  //  }
 
   // some printout formatting stuff
   // used in overloaded << operators
@@ -244,40 +259,28 @@ private:
                    const APLCON::Variable_Settings_t& settings);
   template<typename T>
   void CheckMapKey(const std::string& tag, const std::string& name,
-                std::map<std::string, T> c);
+                   std::map<std::string, T> c);
 
   // shortcuts for double limits (used in default values for methods above)
   const static double NaN;
 
   // some extra stuff for having a nice constraint interface
 
-  // first it seems pretty complicated to figure out how many arguments a
-  // given lambda has (std::function is easy though)
+  // get some function traits like return type and number of arguments
   // based on http://stackoverflow.com/questions/20722918/how-to-make-c11-functions-taking-function-parameters-accept-lambdas-automati/
   // and http://stackoverflow.com/questions/9044866/how-to-get-the-number-of-arguments-of-stdfunction
 
   template <typename T>
   struct function_traits
-     : public function_traits<decltype(&T::operator())>
+      : public function_traits<decltype(&T::operator())>
   {};
 
   template <typename ClassType, typename ReturnType, typename... Args>
   struct function_traits<ReturnType(ClassType::*)(Args...) const> {
-     typedef std::function<ReturnType (Args...)> f_type;
-  };
-
-  template <typename L>
-  typename function_traits<L>::f_type make_function(L l) const {
-    return (typename function_traits<L>::f_type)(l);
-  }
-
-  // this works only with std::function due to the necessary return type R (I guess)
-  template<typename T>
-  struct count_arg;
-
-  template<typename R, typename... Args>
-  struct count_arg<std::function<R(Args...)>> {
-      static const size_t value = sizeof...(Args);
+    //typedef std::function<ReturnType (Args...)> f_type;
+    static const size_t n_args = sizeof...(Args);
+    using r_type = ReturnType;
+    static const bool returns_double = std::is_same<ReturnType, double>::value;
   };
 
   // this little template fun is called "pack of indices"
@@ -293,42 +296,46 @@ private:
   template <std::size_t... Is>
   struct build_indices<0, Is...> : indices<Is...> {};
 
-//  template <typename FuncType, size_t... I>
-//  std::function<double(const std::vector<const double*>&)>
-//  bind_constraint(const FuncType& f, indices<I...>) const {
-//    // "vectorize" the given constraint function f to fv
-//    // by defining a lambda fv which is bound to the original f
-//    // then fv can be called on vectors containing pointers to the values
-//    // on which the constraint should be evaluated
-//    // see DoFit/Init methods how those arguments for the returned function are constructed
-//    auto fv = [] (const FuncType& f, const std::vector<const double*>& x) {
-//      return f(*(x[I])...);
-//    };
-//    return std::bind(fv, f, std::placeholders::_1);
-//  }
 
-  template <typename FuncType, size_t... I>
+  // define the two different constraint binding functions
+  // which are selected on compile-time via their first argument
+
+  template <typename F, size_t... I>
   std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
-  bind_linked_constraint(const FuncType& f, indices<I...>) const {
+  bind_constraint(std::enable_if<true>, const F& f, indices<I...>) const {
     // similar to bind_constraint,
     // but f takes now some vector's of doubles (instead of just one double)
-    auto fv = [] (const FuncType& f, const std::vector< std::vector<const double*> >& x) {
-//      // if we find at least one vector in x with more than one double*
-//      // we assume f to take vectors of double* (dereferencing it on it's own)
-//      std::vector<const double*> x_(sizeof...(I));
-//      for(size_t i=0;i<sizeof...(I);i++) {
-//        if(x[i].size()>1) {
-//          return f(move(x[I])...);
-//        }
-//        // size==0 should not appear due to construction in Init
-//        x_.push_back(x[i][0]);
-//      }
-//      // we can simplify now the f call by dereferencing here
-//      return f(*(x_[I])...);
-      return f(move(x[I])...);
+    auto fv = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+      // "vectorize" the given constraint function f to fv
+      // by defining a lambda fv which is bound to the original f
+      // then fv can be called on vectors containing pointers to the values
+      // on which the constraint should be evaluated
+      // see DoFit/Init methods how those arguments for the returned function are constructed
+      std::vector<const double*> x_(sizeof...(I));
+      for(size_t i=0;i<sizeof...(I);i++) {
+        // size==0 should not appear due to construction in Init
+        x_.push_back(x[i][0]);
+      }
+      // we can simplify now the f call by dereferencing here
+      return {f(*(x_[I])...)};
     };
     return std::bind(fv, f, std::placeholders::_1);
   }
+
+  template <typename F, size_t... I>
+  std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
+  bind_constraint(std::enable_if<false>, const F& f, indices<I...>) const {
+    // similar to bind_constraint,
+    // but f takes now some vector's of doubles (instead of just one double)
+    auto fv = [] (const F& f, const std::vector< std::vector<const double*> >& x) {
+      // TODO: Make vector<double> instead of pointers...?
+      return f(move(x[I])...);
+    };
+
+    return std::bind(fv, f, std::placeholders::_1);
+  }
+
+
 };
 
 // templated methods must be implemented in header file

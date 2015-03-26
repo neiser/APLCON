@@ -24,8 +24,8 @@ add_library(aplcon++ SHARED src/APLCON.cc src/wrapper/APLCON.f90 src/wrapper/APL
 target_link_libraries(aplcon++ aplcon)
 
 # build some examples
-#add_executable(APLCON_example_01 src/example/01_simple.cc)
-#target_link_libraries(APLCON_example_01 aplcon++)
+add_executable(APLCON_example_01 src/example/01_simple.cc)
+target_link_libraries(APLCON_example_01 aplcon++)
 
 add_executable(APLCON_example_02 src/example/02_linker.cc)
 target_link_libraries(APLCON_example_02 aplcon++)

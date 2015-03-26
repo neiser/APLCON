@@ -24,8 +24,8 @@ int main() {
     return {*a[0] - *a[1]};
   };
 
-  a.AddConstraint("BF_e_equal",{"BF_e"},make_equal);
-  a.AddConstraint("BF_tau_equal",{"BF_tau"},make_equal);
+  a.AddConstraint("BF_e_equal",   {"BF_e"},   make_equal);
+  a.AddConstraint("BF_tau_equal", {"BF_tau"}, make_equal);
 
   cout << a.DoFit() << endl;
 
