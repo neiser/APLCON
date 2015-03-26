@@ -311,7 +311,7 @@ private:
   std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
   bind_linked_constraint(const FuncType& f, indices<I...>) const {
     // similar to bind_constraint,
-    // but f takes now some vector's of doubles (instead of single double)
+    // but f takes now some vector's of doubles (instead of just one double)
     auto fv = [] (const FuncType& f, const std::vector< std::vector<const double*> >& x) {
 //      // if we find at least one vector in x with more than one double*
 //      // we assume f to take vectors of double* (dereferencing it on it's own)

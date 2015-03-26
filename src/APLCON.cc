@@ -211,6 +211,7 @@ APLCON::Result_t APLCON::DoFit()
       s_name << name << "[" << k << "]";
       var.Name = s_name.str();
       var.Value = {*(before.Values[k]), X[i]};
+      *(before.Values[k]) = X[i];
 
       const size_t V_i = (i+1)*(i+2)/2-1;
       var.Sigma = {before.Sigmas[k], sqrt(V[V_i])};
