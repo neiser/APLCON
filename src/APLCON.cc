@@ -205,12 +205,11 @@ APLCON::Result_t APLCON::DoFit()
 
 void APLCON::Init()
 {
-  // tell APLCON the number of variables and the number of constraints
-  // this call is always needed before the c_aplcon_aploop calls
-  c_aplcon_aplcon(variables.size(), constraints.size());
 
-  if(initialized && instance_id == instance_lastfit)
+  if(initialized && instance_id == instance_lastfit) {
+    c_aplcon_aplcon(variables.size(), nConstraints);
     return;
+  }
 
   // setup APLCON itself
   c_aplcon_aprint(0,fit_settings.DebugLevel); // default output on LUNP 0
@@ -293,6 +292,30 @@ void APLCON::Init()
     F_func.emplace_back(bind(c.Function, args));
   }
 
+  // the linked constraints business
+  nConstraints = 0;
+  F_func_linked.clear();
+  F_func_linked.reserve(linked_constraints.size());
+  for(const auto& c_map : linked_constraints) {
+    // build the vector of double pointers
+    const linked_constraint_t& c = c_map.second;
+    vector< vector<const double*> > args;
+    args.reserve(c.VariableNames.size()); // args might be smaller, but probably not larger
+    for(const string& varname : c.VariableNames) {
+      auto index = X_s2i.find(varname);
+      if(index == X_s2i.end()) {
+        throw logic_error("Linked constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
+      }
+      // build the vector of pointers to X_linked values
+      vector<const double*> p;
+
+      //args.emplace_back(X_linked[index->second]);
+    }
+    F_func_linked.emplace_back(bind(c.Function, args));
+  }
+
+  F.resize(nConstraints);
+
   // V filled with off-diagonal elements from covariances
   for(const auto& c_map : covariances) {
     const pair<string, string>& vars = c_map.first;
@@ -327,7 +350,7 @@ void APLCON::AddVariable(const string &name, const double value, const double si
                          const APLCON::Variable_Settings_t& settings)
 {
   // check if variable already exists
-  TestName("Variable", name, variables);
+  CheckMapKey("Variable", name, variables);
 
   Variable_t var;
   var.Value = value;

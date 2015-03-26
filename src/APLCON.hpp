@@ -5,8 +5,9 @@
 #include <map>
 #include <functional>
 #include <limits>
-#include <type_traits>
 #include <stdexcept>
+
+#include <iostream>
 
 /**
  * @brief The APLCON class
@@ -52,6 +53,12 @@ public:
     double Value;
     double Sigma;
     Variable_Settings_t Settings;
+  };
+
+  struct Linked_Variable_t {
+    std::vector<double*> Values;
+    std::vector<double*> Sigmas;
+    std::vector<Variable_Settings_t> Settings;
   };
 
   enum class Result_Status_t {
@@ -161,9 +168,40 @@ public:
   template<typename T>
   void AddConstraint(const std::string& name,
                      const std::vector<std::string>& varnames,
-                     T constraint);
+                     const T& constraint);
 
   void SetCovariance(const std::string& var1, const std::string& var2, const double cov);
+
+
+  template<typename VarType, typename FuncType>
+  void LinkVariable(const std::string& name, VarType& var, FuncType linker) {
+    Linked_Variable_t v;
+    v.Values = linker(var);
+    // todo: link sigmas as well...
+    linked_variables[name] = v;
+  }
+
+  template<typename T>
+  void AddLinkedConstraint(const std::string& name,
+                     const std::vector<std::string>& varnames,
+                     const T& constraint)
+  {
+    CheckMapKey("Linked constraint", name, constraints);
+    auto f = make_function(constraint);
+    const size_t n = count_arg<decltype(f)>::value;
+    if(varnames.size() != n) {
+      throw std::logic_error("Constraint function argument number does not match the number of varnames.");
+    }
+    linked_constraints[name] = {varnames, bind_linked_constraint(constraint, build_indices<n> {})};
+    initialized = false;
+  }
+
+  void Test(const std::string& name) {
+
+    std::cout << *(linked_variables[name].Values[0]) << std::endl;
+    std::cout << linked_variables[name].Values[0] << std::endl;
+    (*(linked_variables[name].Values[0]))++;
+  }
 
   // some printout formatting stuff
   // used in overloaded << operators
@@ -180,20 +218,31 @@ private:
     std::function<double(const std::vector<const double*>&)> Function;
   };
 
+  struct linked_constraint_t {
+    std::vector<std::string> VariableNames;
+    std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
+  };
+
+
   // values with starting values (works since map is ordered)
-  std::map<std::string, Variable_t> variables;
+  // TODO: merge variables and linked variables
+  std::map<std::string, Variable_t>        variables;
+  std::map<std::string, Linked_Variable_t> linked_variables;
   // off-diagonal covariances addressed by pairs of variable names
   std::map< std::pair<std::string, std::string>, double > covariances;
   // the constraints
   // a constraint has a list of variable names and
   // a corresponding "vectorized" function evaluated on pointers to double
   std::map<std::string, constraint_t> constraints;
+  std::map<std::string, linked_constraint_t> linked_constraints;
+  int nConstraints; // number of double-valued equations, finally determined in Init()
 
   // storage vectors for APLCON (only usable after Init() call!)
   // X values, V covariances, F constraints
   // and some helper variables
-  std::vector<double> X, V, F, V_before;
+  std::vector<double> X, V, F, V_before, X_linked;
   std::vector< std::function<double()> > F_func;
+  std::vector< std::function<std::vector<double>()> > F_func_linked;
   std::map<std::string, size_t> X_s2i; // from varname to index in X
 
   // since APLCON is stateful, multiple instances of this class
@@ -213,7 +262,7 @@ private:
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const APLCON::Variable_Settings_t& settings);
   template<typename T>
-  void TestName(const std::string& tag, const std::string& name,
+  void CheckMapKey(const std::string& tag, const std::string& name,
                 std::map<std::string, T> c);
 
   // shortcuts for double limits (used in default values for methods above)
@@ -270,13 +319,35 @@ private:
     // by defining a lambda fv which is bound to the original f
     // then fv can be called on vectors containing pointers to the values
     // on which the constraint should be evaluated
-    // see DoFit how this is actually done
+    // see DoFit/Init methods how those arguments for the returned function are constructed
     auto fv = [] (const FuncType& f, const std::vector<const double*>& x) {
-      return f(*x[I]...);
+      return f(*(x[I])...);
     };
     return std::bind(fv, f, std::placeholders::_1);
   }
 
+  template <typename FuncType, size_t... I>
+  std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
+  bind_linked_constraint(const FuncType& f, indices<I...>) const {
+    // similar to bind_constraint,
+    // but f takes now some vector's of doubles (instead of single double)
+    auto fv = [] (const FuncType& f, const std::vector< std::vector<const double*> >& x) {
+//      // if we find at least one vector in x with more than one double*
+//      // we assume f to take vectors of double* (dereferencing it on it's own)
+//      std::vector<const double*> x_(sizeof...(I));
+//      for(size_t i=0;i<sizeof...(I);i++) {
+//        if(x[i].size()>1) {
+//          return f(move(x[I])...);
+//        }
+//        // size==0 should not appear due to construction in Init
+//        x_.push_back(x[i][0]);
+//      }
+//      // we can simplify now the f call by dereferencing here
+//      return f(*(x_[I])...);
+      return f(move(x[I])...);
+    };
+    return std::bind(fv, f, std::placeholders::_1);
+  }
 };
 
 // templated methods must be implemented in header file
@@ -284,9 +355,9 @@ private:
 template<typename T>
 void APLCON::AddConstraint(const std::string& name,
                    const std::vector<std::string>& varnames,
-                   T constraint)
+                   const T& constraint)
 {
-  TestName("Constraint", name, constraints);
+  CheckMapKey("Constraint", name, constraints);
   auto f = make_function(constraint);
   const size_t n = count_arg<decltype(f)>::value;
   if(varnames.size() != n) {
@@ -297,7 +368,7 @@ void APLCON::AddConstraint(const std::string& name,
 }
 
 template<typename T>
-void APLCON::TestName(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
+void APLCON::CheckMapKey(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
   if(name.empty()) {
     throw std::logic_error(tag+" name empty");
   }
