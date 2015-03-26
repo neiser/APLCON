@@ -23,8 +23,8 @@ include_directories(src)
 add_library(aplcon++ SHARED src/APLCON.cc src/wrapper/APLCON.f90 src/wrapper/APLCON.h)
 target_link_libraries(aplcon++ aplcon)
 
-add_executable(aplcon_example src/APLCON_example.cc)
-target_link_libraries(aplcon_example aplcon++)
+#add_executable(aplcon_example src/APLCON_example.cc)
+#target_link_libraries(aplcon_example aplcon++)
 
 add_executable(aplcon_test src/APLCON_test.cc)
 target_link_libraries(aplcon_test aplcon++)

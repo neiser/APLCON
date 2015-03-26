@@ -50,14 +50,8 @@ public:
   };
 
   struct Variable_t {
-    double Value;
-    double Sigma;
-    Variable_Settings_t Settings;
-  };
-
-  struct Linked_Variable_t {
     std::vector<double*> Values;
-    std::vector<double*> Sigmas;
+    std::vector<double> Sigmas;
     std::vector<Variable_Settings_t> Settings;
   };
 
@@ -159,6 +153,15 @@ public:
                         const Distribution_t& distribution = Distribution_t::Gaussian
       );
 
+
+  void SetCovariance(const std::string& var1, const std::string& var2, const double cov);
+
+
+  void LinkVariable(const std::string& name,
+                    const std::vector<double*>& values,
+                    const std::vector<double>& sigmas,
+                    const std::vector<Variable_Settings_t>& settings = {}
+                    );
   /**
    * @brief AddConstraint
    * @param name unique label for the constraint
@@ -168,22 +171,6 @@ public:
   template<typename T>
   void AddConstraint(const std::string& name,
                      const std::vector<std::string>& varnames,
-                     const T& constraint);
-
-  void SetCovariance(const std::string& var1, const std::string& var2, const double cov);
-
-
-  template<typename VarType, typename FuncType>
-  void LinkVariable(const std::string& name, VarType& var, FuncType linker) {
-    Linked_Variable_t v;
-    v.Values = linker(var);
-    // todo: link sigmas as well...
-    linked_variables[name] = v;
-  }
-
-  template<typename T>
-  void AddLinkedConstraint(const std::string& name,
-                     const std::vector<std::string>& varnames,
                      const T& constraint)
   {
     CheckMapKey("Linked constraint", name, constraints);
@@ -192,16 +179,16 @@ public:
     if(varnames.size() != n) {
       throw std::logic_error("Constraint function argument number does not match the number of varnames.");
     }
-    linked_constraints[name] = {varnames, bind_linked_constraint(constraint, build_indices<n> {})};
+    constraints[name] = {varnames, bind_linked_constraint(constraint, build_indices<n> {})};
     initialized = false;
   }
 
-  void Test(const std::string& name) {
+//  void Test(const std::string& name) {
 
-    std::cout << *(linked_variables[name].Values[0]) << std::endl;
-    std::cout << linked_variables[name].Values[0] << std::endl;
-    (*(linked_variables[name].Values[0]))++;
-  }
+//    std::cout << *(variables[name].Values[0]) << std::endl;
+//    std::cout << variables[name].Values[0] << std::endl;
+//    (*(variables[name].Values[0]))++;
+//  }
 
   // some printout formatting stuff
   // used in overloaded << operators
@@ -213,12 +200,8 @@ public:
 
 
 private:
-  struct constraint_t {
-    std::vector<std::string> VariableNames;
-    std::function<double(const std::vector<const double*>&)> Function;
-  };
 
-  struct linked_constraint_t {
+  struct constraint_t {
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
   };
@@ -226,8 +209,7 @@ private:
 
   // values with starting values (works since map is ordered)
   // TODO: merge variables and linked variables
-  std::map<std::string, Variable_t>        variables;
-  std::map<std::string, Linked_Variable_t> linked_variables;
+  std::map<std::string, Variable_t> variables;
   int nVariables; // number of simple variables
   // off-diagonal covariances addressed by pairs of variable names
   std::map< std::pair<std::string, std::string>, double > covariances;
@@ -235,15 +217,13 @@ private:
   // a constraint has a list of variable names and
   // a corresponding "vectorized" function evaluated on pointers to double
   std::map<std::string, constraint_t> constraints;
-  std::map<std::string, linked_constraint_t> linked_constraints;
   int nConstraints; // number of double-valued equations, finally determined in Init()
 
   // storage vectors for APLCON (only usable after Init() call!)
   // X values, V covariances, F constraints
   // and some helper variables
-  std::vector<double> X, V, F, V_before, X_linked;
-  std::vector< std::function<double()> > F_func;
-  std::vector< std::function<std::vector<double>()> > F_func_linked;
+  std::vector<double> X, V, F, V_before;
+  std::vector< std::function<std::vector<double>()> > F_func;
   std::map<std::string, size_t> X_s2i; // from varname to index in X
 
   // since APLCON is stateful, multiple instances of this class
@@ -313,19 +293,19 @@ private:
   template <std::size_t... Is>
   struct build_indices<0, Is...> : indices<Is...> {};
 
-  template <typename FuncType, size_t... I>
-  std::function<double(const std::vector<const double*>&)>
-  bind_constraint(const FuncType& f, indices<I...>) const {
-    // "vectorize" the given constraint function f to fv
-    // by defining a lambda fv which is bound to the original f
-    // then fv can be called on vectors containing pointers to the values
-    // on which the constraint should be evaluated
-    // see DoFit/Init methods how those arguments for the returned function are constructed
-    auto fv = [] (const FuncType& f, const std::vector<const double*>& x) {
-      return f(*(x[I])...);
-    };
-    return std::bind(fv, f, std::placeholders::_1);
-  }
+//  template <typename FuncType, size_t... I>
+//  std::function<double(const std::vector<const double*>&)>
+//  bind_constraint(const FuncType& f, indices<I...>) const {
+//    // "vectorize" the given constraint function f to fv
+//    // by defining a lambda fv which is bound to the original f
+//    // then fv can be called on vectors containing pointers to the values
+//    // on which the constraint should be evaluated
+//    // see DoFit/Init methods how those arguments for the returned function are constructed
+//    auto fv = [] (const FuncType& f, const std::vector<const double*>& x) {
+//      return f(*(x[I])...);
+//    };
+//    return std::bind(fv, f, std::placeholders::_1);
+//  }
 
   template <typename FuncType, size_t... I>
   std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
@@ -353,20 +333,20 @@ private:
 
 // templated methods must be implemented in header file
 
-template<typename T>
-void APLCON::AddConstraint(const std::string& name,
-                   const std::vector<std::string>& varnames,
-                   const T& constraint)
-{
-  CheckMapKey("Constraint", name, constraints);
-  auto f = make_function(constraint);
-  const size_t n = count_arg<decltype(f)>::value;
-  if(varnames.size() != n) {
-    throw std::logic_error("Constraint function argument number does not match the number of varnames.");
-  }
-  constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
-  initialized = false;
-}
+//template<typename T>
+//void APLCON::AddConstraint(const std::string& name,
+//                   const std::vector<std::string>& varnames,
+//                   const T& constraint)
+//{
+//  CheckMapKey("Constraint", name, constraints);
+//  auto f = make_function(constraint);
+//  const size_t n = count_arg<decltype(f)>::value;
+//  if(varnames.size() != n) {
+//    throw std::logic_error("Constraint function argument number does not match the number of varnames.");
+//  }
+//  constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
+//  initialized = false;
+//}
 
 template<typename T>
 void APLCON::CheckMapKey(const std::string& tag, const std::string& name, std::map<std::string, T> c) {

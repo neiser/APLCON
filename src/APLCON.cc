@@ -96,6 +96,33 @@ void APLCON::SetCovariance(const string &var1, const string &var2, const double 
   covariances.insert(make_pair(p1, cov));
 }
 
+void APLCON::LinkVariable(const string &name, const std::vector<double *> &values, const std::vector<double> &sigmas, const std::vector<APLCON::Variable_Settings_t> &settings) {
+  CheckMapKey("Linked Variable", name, variables);
+
+  const size_t n = values.size();
+  if(n==0) {
+    throw std::logic_error("At least one value should be linked.");
+  }
+
+  Variable_t var;
+  if(sigmas.size()==1) {
+    var.Sigmas.resize(n, sigmas[0]);
+  }
+  else if(sigmas.size() != n) {
+    throw std::logic_error("Sigmas size does not match number of returned double* from linker function.");
+  }
+  else {
+    var.Sigmas = sigmas;
+  }
+
+  if(settings.size() == 0) {
+    var.Settings.resize(n, Variable_Settings_t::Default);
+  }
+  var.Values = values;
+  //linked_variables.insert(make_pair(name, std::move(v)));
+  variables.emplace(name, var);
+}
+
 APLCON::Result_t APLCON::DoFit()
 {
   // ensure that APLCON is properly initialized
@@ -106,8 +133,12 @@ APLCON::Result_t APLCON::DoFit()
   int aplcon_ret = -1;
   do {
     // evaluate the constraints
-    for(size_t i=0; i<F.size(); ++i) {
-      F[i] = F_func[i]();
+    auto F_it = F.begin();
+    for(size_t i=0; i<F_func.size(); ++i) {
+      for(const auto& v : F_func[i]()) {
+        *F_it = v;
+        ++F_it;
+      }
     }
     // call APLCON iteration
     c_aplcon_aploop(X.data(), V.data(), F.data(), &aplcon_ret);
@@ -166,35 +197,43 @@ APLCON::Result_t APLCON::DoFit()
   // now we're ready to fill the result.Variables vector
   // we fill it in the same order as the X vector
   // which makes debug output from  APLCON comparable to dumps of this structure
-  result.Variables.reserve(variables.size());
+  result.Variables.reserve(X.size());
 
-  auto it_vars = variables.cbegin();
-  for(size_t i=0; i<X.size(); ++i, ++it_vars) {
-    const string& name = it_vars->first;
-    const Variable_t& before = it_vars->second;
+  for(const auto& var_pair : variables) {
+    const string& name = var_pair.first;
+    const Variable_t& before = var_pair.second;
 
-    Result_Variable_t var;
-    var.Name = name;
-    var.Value = {before.Value, X[i]};
-    const size_t V_i = (i+1)*(i+2)/2-1;
-    var.Sigma = {before.Sigma, sqrt(V[V_i])};
-    //
-    var.Covariances.Before.resize(X.size());
-    var.Covariances.After.resize(X.size());
-    for(size_t j=0; j<X.size(); j++) {
-      const size_t i_ = i<j ? i : j;
-      const size_t j_ = i>j ? i : j;
-      const size_t V_i = j_*(j_+1)/2 + i_;
-      var.Covariances.Before[j] = V_before[V_i];
-      var.Covariances.After[j] = V[V_i];
+    for(size_t k=0;k<before.Values.size();k++) {
+      size_t i = X_s2i[name]+k;
+
+      Result_Variable_t var;
+      stringstream s_name;
+      s_name << name << "[" << k << "]";
+      var.Name = s_name.str();
+      var.Value = {*(before.Values[k]), X[i]};
+
+      const size_t V_i = (i+1)*(i+2)/2-1;
+      var.Sigma = {before.Sigmas[k], sqrt(V[V_i])};
+      //
+      var.Covariances.Before.resize(X.size());
+      var.Covariances.After.resize(X.size());
+      for(size_t j=0; j<X.size(); j++) {
+        const size_t i_ = i<j ? i : j;
+        const size_t j_ = i>j ? i : j;
+        const size_t V_i = j_*(j_+1)/2 + i_;
+        var.Covariances.Before[j] = V_before[V_i];
+        var.Covariances.After[j]  = V[V_i];
+      }
+
+      var.Pull = pulls[i];
+      var.Settings = before.Settings[k];
+
+      // iterating over variables should be the right order
+      result.Variables.push_back(move(var));
     }
-    var.Pull = pulls[i];
-    var.Settings = before.Settings;
-
-    // iterating over variables should be the right order
-    result.Variables.push_back(move(var));
   }
 
+  // copy just the names of the constraints
   result.Constraints.reserve(constraints.size());
   for(const auto& c : constraints) {
     result.Constraints.emplace_back(c.first);
@@ -203,37 +242,14 @@ APLCON::Result_t APLCON::DoFit()
   return result;
 }
 
-void init_aplcon_var(int i, const APLCON::Variable_Settings_t& s) {
-  // setup APLCON variable specific things
-  switch (s.Distribution) {
-  case APLCON::Distribution_t::Gaussian:
-    // thats the APLCON default
-    break;
-  case APLCON::Distribution_t::Poissonian:
-    c_aplcon_apoiss(i);
-    break;
-  case APLCON::Distribution_t::LogNormal:
-    c_aplcon_aplogn(i);
-    break;
-  case APLCON::Distribution_t::SquareRoot:
-    c_aplcon_apsqrt(i);
-    break;
-  // APLCON exposes even more transformations (see wrapper),
-  // but they're not mentioned in the README...
-  default:
-    break;
-  }
-
-  if(isfinite(s.Limit.Low) && isfinite(s.Limit.High))
-    c_aplcon_aplimt(i, s.Limit.Low, s.Limit.High);
-  if(isfinite(s.StepSize))
-    c_aplcon_apstep(i, s.StepSize);
-}
 
 void APLCON::Init()
 {
-
   if(initialized && instance_id == instance_lastfit) {
+    // TODO copy again the linked variables to X,
+    // and sigmas to diagonal V
+
+    // reset APLCON for next fit
     c_aplcon_aplcon(nVariables, nConstraints);
     return;
   }
@@ -241,44 +257,27 @@ void APLCON::Init()
 
   // build the storage arrays for APLCON
 
-  // prepare the symmetric covariance matrix
-//  const size_t n = variables.size();
-//  V.resize(n*(n+1)/2);
-//  fill(V.begin(), V.end(), 0);
-
   // X are simpy the start values, but also track the
-  // map of variables names to index in X
+  // map of variables names to index in X (as offsets)
   // this is used to create the double pointer arrays
   // for the constraints later and also to unmap results of APLCON in DoFit
-//  X.resize(variables.size());
-//  auto it_vars = variables.cbegin(); // use const iterator
-//  X_s2i.clear(); // clear the map
-//  for(size_t i = 0; i < X.size() && it_vars != variables.cend() ; ++i, ++it_vars) {
-//    const Variable_t& var = it_vars->second;
-//    X[i] = var.Value; // copy initial values
-//    X_s2i[it_vars->first] = i;
-//    const size_t V_i = (i+1)*(i+2)/2-1;
-//    V[V_i] = pow(var.Sigma,2);
-//  }
-
-  // X and diagonal V for linked variables
   nVariables = 0;
   X.clear();
-  X.reserve(2*linked_variables.size()); // assume only simple variables
-  const size_t n = X.size();
+  X.reserve(2*variables.size()); // assume only simple variables
   V.clear();
-  V.reserve(n*(n+1)/2); // another estimate for V
-  X_s2i.clear(); // clear the map
-  for(const auto& it_var : linked_variables) {
+  V.reserve((X.size() << 1)/2); // another estimate for V's size
+  X_s2i.clear(); // clear the map of variable offsets
+  for(const auto& it_var : variables) {
     size_t offset = X.size();
     X_s2i[it_var.first] = offset;
-    const Linked_Variable_t& var = it_var.second;
+    const Variable_t& var = it_var.second;
+    nVariables += var.Values.size();
     for(size_t i=0;i<var.Values.size();i++) {
       X.push_back(*(var.Values[i])); // copy initial values
       const size_t j = offset+i;
       const size_t V_j = (j+1)*(j+2)/2-1;
       V.resize(V_j+1,0);
-      V[V_j] = pow(*(var.Sigmas[i]),2);
+      V[V_j] = pow(var.Sigmas[i],2);
     }
   }
 
@@ -287,70 +286,62 @@ void APLCON::Init()
   // F will be set by APLCON iteration loop in DoFit
   // F_func are bound to the double pointers which we know
   // since X is now finally allocated in memory
-//  F.resize(constraints.size());
-//  F_func.clear();
-//  F_func.reserve(constraints.size());
-//  for(const auto& c_map : constraints) {
-//    // build the vector of double pointers
-//    const constraint_t& c = c_map.second;
-//    vector<const double*> args;
-//    args.reserve(c.VariableNames.size());
-//    for(const string& varname : c.VariableNames) {
-//      auto index = X_s2i.find(varname);
-//      if(index == X_s2i.end()) {
-//        throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
-//      }
-//      args.emplace_back(&X[index->second]);
-//    }
-//    F_func.emplace_back(bind(c.Function, args));
-//  }
-
-  // the linked constraints business
   nConstraints = 0;
-  F_func_linked.clear();
-  F_func_linked.reserve(linked_constraints.size());
-  for(const auto& c_map : linked_constraints) {
+  F_func.clear();
+  F_func.reserve(constraints.size());
+  for(const auto& c_map : constraints) {
     // build the vector of double pointers
-    const linked_constraint_t& c = c_map.second;
+    const constraint_t& c = c_map.second;
     vector< vector<const double*> > args;
     args.reserve(c.VariableNames.size()); // args might be smaller, but probably not larger
     for(const string& varname : c.VariableNames) {
-      auto index = X_s2i.find(varname);
+      const auto& index = X_s2i.find(varname);
       if(index == X_s2i.end()) {
         throw logic_error("Linked constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
       }
+      const size_t offset = index->second;
+      // we need the number of values in the linked variable
+      const Variable_t& var = variables[varname];
+      const size_t n = var.Values.size();
       // build the vector of pointers to X_linked values
-      vector<const double*> p;
-      //const Linked_Variable_t& var =
-      //args.emplace_back(X_linked[index->second]);
+      vector<const double*> p(n);
+      for(size_t i=0; i<n; i++) {
+        p[i] = &X[offset+i];
+      }
+      args.push_back(p);
     }
-    F_func_linked.emplace_back(bind(c.Function, args));
+    const auto& func = bind(c.Function, args);
+    // now, since we have bound the func, we can execute it once
+    // to determine the returned number of values and
+    // thus obtain the number of constraints
+    const vector<double>&  r = func();
+    nConstraints += r.size();
+    F_func.push_back(func);
   }
-
   F.resize(nConstraints);
 
-  // V filled with off-diagonal elements from covariances
-  for(const auto& c_map : covariances) {
-    const pair<string, string>& vars = c_map.first;
-    auto i1 = X_s2i.find(vars.first);
-    if(i1 == X_s2i.end()) {
-      throw logic_error("Covariance variable '"+vars.first+"' not found");
-    }
-    auto i2 = X_s2i.find(vars.second);
-    if(i2 == X_s2i.end()) {
-      throw logic_error("Covariance variable '"+vars.second+"' not found");
-    }
-    if(i1==i2) {
-      throw logic_error("Use variable's Sigma field to define uncertainties.");
-    }
-    int i = i1->second;
-    int j = i2->second;
-    if(i>j) {
-      swap(i,j);
-    }
-    const size_t offset = j*(j+1)/2;
-    V[offset+i] = c_map.second;
-  }
+//  // V filled with off-diagonal elements from covariances
+//  for(const auto& c_map : covariances) {
+//    const pair<string, string>& vars = c_map.first;
+//    auto i1 = X_s2i.find(vars.first);
+//    if(i1 == X_s2i.end()) {
+//      throw logic_error("Covariance variable '"+vars.first+"' not found");
+//    }
+//    auto i2 = X_s2i.find(vars.second);
+//    if(i2 == X_s2i.end()) {
+//      throw logic_error("Covariance variable '"+vars.second+"' not found");
+//    }
+//    if(i1==i2) {
+//      throw logic_error("Use variable's Sigma field to define uncertainties.");
+//    }
+//    int i = i1->second;
+//    int j = i2->second;
+//    if(i>j) {
+//      swap(i,j);
+//    }
+//    const size_t V_offset = j*(j+1)/2;
+//    V[V_offset+i] = c_map.second;
+//  }
 
   // finally we know the number of variables and constraints
   // so we can setup APLCON itself
@@ -368,8 +359,37 @@ void APLCON::Init()
   if(isfinite(fit_settings.MinimalStepSizeFactor))
     c_aplcon_apdlow(fit_settings.MinimalStepSizeFactor);
 
-  // TODO: call init_aplcon_var
+  for(const auto& it_var : variables) {
+    const Variable_t& var = it_var.second;
+    for(size_t j=0;j<var.Settings.size();j++) {
+      const Variable_Settings_t& s = var.Settings[j];
+      int i = j+X_s2i[it_var.first];
+      // setup APLCON variable specific things
+      switch (s.Distribution) {
+      case APLCON::Distribution_t::Gaussian:
+        // thats the APLCON default, nothing must be called
+        break;
+      case APLCON::Distribution_t::Poissonian:
+        c_aplcon_apoiss(i);
+        break;
+      case APLCON::Distribution_t::LogNormal:
+        c_aplcon_aplogn(i);
+        break;
+      case APLCON::Distribution_t::SquareRoot:
+        c_aplcon_apsqrt(i);
+        break;
+      // APLCON exposes even more transformations (see wrapper),
+      // but they're not mentioned in the README...
+      default:
+        break;
+      }
 
+      if(isfinite(s.Limit.Low) && isfinite(s.Limit.High))
+        c_aplcon_aplimt(i, s.Limit.Low, s.Limit.High);
+      if(isfinite(s.StepSize))
+        c_aplcon_apstep(i, s.StepSize);
+    }
+  }
 
   // save a copy for later
   V_before = V;
@@ -386,9 +406,12 @@ void APLCON::AddVariable(const string &name, const double value, const double si
   CheckMapKey("Variable", name, variables);
 
   Variable_t var;
-  var.Value = value;
-  var.Sigma = sigma;
-  var.Settings = settings;
+
+  // TODO: implement simple variable stuff
+
+  //var.Value = value;
+  //var.Sigma = sigma;
+  //var.Settings = settings;
 
   // add the variable to the map
   variables[name] = var;
