@@ -192,7 +192,7 @@ APLCON::Result_t APLCON::DoFit()
     var.Settings = before.Settings;
 
     // iterating over variables should be the right order
-    result.Variables.push_back(var);
+    result.Variables.push_back(move(var));
   }
 
   result.Constraints.reserve(constraints.size());
