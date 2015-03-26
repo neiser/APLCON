@@ -13,3 +13,12 @@ Have a look at the APLCON++ example how to use this interface:
 Please report bugs and improvements! The interface using variables
 defined by string is considered stable, but there will be some
 interface for some more complex data types available soon.
+
+To build this project, execute
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
