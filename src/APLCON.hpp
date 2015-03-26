@@ -228,6 +228,7 @@ private:
   // TODO: merge variables and linked variables
   std::map<std::string, Variable_t>        variables;
   std::map<std::string, Linked_Variable_t> linked_variables;
+  int nVariables; // number of simple variables
   // off-diagonal covariances addressed by pairs of variable names
   std::map< std::pair<std::string, std::string>, double > covariances;
   // the constraints
