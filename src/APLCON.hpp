@@ -174,23 +174,23 @@ public:
    * @param referred variable names the constraint should act on
    * @param constraint lambda function taking varnames size double arguments, and return double. Should vanish if fulfilled.
    */
-  template<typename F>
+  template<typename Functor>
   void AddConstraint(const std::string& name,
                      const std::vector<std::string>& varnames,
-                     const F& constraint)
+                     const Functor& constraint)
   {
     CheckMapKey("Linked constraint", name, constraints);
 
-    using trait = function_traits<F>;
+    using trait = function_traits<Functor>;
 
     static_assert(trait::is_functor, "Only functors are supported as constraints, wrap and bind it if you want to pass such things.");
 
-    constexpr size_t n = trait::arity; // number of arguments in T
+    constexpr size_t n = trait::arity; // number of arguments in Functor
     using r_type = typename trait::return_type;
 
     constexpr bool returns_double = std::is_same<r_type, double >::value;
     constexpr bool returns_vector = std::is_same<r_type, std::vector<double> >::value;
-    static_assert(returns_double || returns_vector, "Constraint function does not return double or vector of double.");
+    static_assert(returns_double || returns_vector, "Constraint function does not return double or vector<double>.");
 
     if(varnames.size() != n) {
       std::stringstream msg;
@@ -280,7 +280,7 @@ private:
   struct function_traits
   {
   private:
-    using call_type = function_traits<decltype(&F::operator())>;
+    using call_type = function_traits<decltype(&F::operator())>; // how to prevent the compiler message here for non-callable types?
   public:
     using return_type = typename call_type::return_type;
 

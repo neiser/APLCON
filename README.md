@@ -6,9 +6,9 @@ fitter APLCON by Volker Blobel. Please
 Also, if you use this wrapper in a publication, don't forget to cite
 Blobel's original work.
 
-Have a look at the APLCON++ example how to use this interface:
+Have a look at the APLCON++ examples how to use this interface:
 
-[APLCON_example.cc](src/APLCON_example.cc)
+[src/example](src/example)
 
 Please report bugs and improvements! The interface using variables
 defined by string is considered stable, but there will be some
