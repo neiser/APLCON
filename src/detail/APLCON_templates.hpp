@@ -39,7 +39,7 @@ struct is_all<checker, T0, T1, Ts...> :
 // std::decay removes const and reference qualifiers
 // which spoils the type comparison we actually want...
 template<typename... Ts>
-using is_all_same_decayed = is_all< std::is_same, typename std::decay<Ts>::type ... >;
+struct is_all_same_decayed : is_all<std::is_same, typename std::decay<Ts>::type ... > {};
 
 // functor
 template<class F>
@@ -122,6 +122,7 @@ struct build_indices<0, Is...> : indices<Is...> {};
 #include <cstdlib>
 #include <memory>
 #include <cxxabi.h>
+#include <string>
 #endif
 
 namespace APLCON_ {

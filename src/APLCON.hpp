@@ -179,8 +179,9 @@ public:
                      const Functor& constraint)
   {
     CheckMapKey("Constraint", name, constraints);
-
-    using trait = APLCON_::function_traits<Functor>; // little shortcut
+    
+    // define shortcut, but need "typedef", not "using" for older gcc versions... 
+    typedef APLCON_::function_traits<Functor> trait; 
 
     // non functors are kind of hard to bind later in bind_constraint,
     // so we forbid this here
