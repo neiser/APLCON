@@ -120,7 +120,7 @@ void APLCON::LinkVariable(const string &name, const std::vector<double *> &value
   }
   var.Values = values;
   //linked_variables.insert(make_pair(name, std::move(v)));
-  variables.emplace(name, var);
+  variables[name] = var;
 }
 
 APLCON::Result_t APLCON::DoFit()
