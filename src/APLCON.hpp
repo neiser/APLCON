@@ -194,13 +194,14 @@ public:
 
     if(varnames.size() != n) {
       std::stringstream msg;
-      msg << "Constraint function argument number " << n <<
-             " does not match the number of varnames " << varnames.size();
+      msg << "Constraint function argument number (" << n <<
+             ") does not match the number of provided varnames (" << varnames.size() << ")";
       throw std::logic_error(msg.str());
     }
 
     const auto& b = bind_constraint(std::enable_if<returns_double>(),
                                     constraint, build_indices<n>{});
+
     constraints[name] = {varnames, b};
     initialized = false;
   }
@@ -318,8 +319,6 @@ private:
     };
 
   };
-
-
 
   // function pointer
   template<typename R, typename... Args>
