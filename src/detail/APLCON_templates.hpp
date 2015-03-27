@@ -8,7 +8,7 @@
 
 namespace APLCON_ {
 
-// some more helper functions
+// some little helper functions
 template <typename T>
 void copy_pointers(std::vector<T>& source, std::vector<T*>& target)
 {

@@ -257,7 +257,6 @@ private:
   // and some helper variables
   std::vector<double> X, V, F, V_before;
   std::vector< std::function<std::vector<double>()> > F_func;
-  //std::map<std::string, size_t> X_s2i; // from varname to index in X
 
   // since APLCON is stateful, multiple instances of this class
   // need to init APLCON again after switching between them

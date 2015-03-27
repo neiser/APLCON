@@ -89,4 +89,6 @@ int main() {
   cout << "== negative correlation, different observable" << endl;
   cout << a.DoFit() << endl;
   cout << b.DoFit() << endl;
+
+  return 0;
 }

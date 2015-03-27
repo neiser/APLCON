@@ -6,19 +6,29 @@ fitter APLCON by Volker Blobel. Please
 Also, if you use this wrapper in a publication, don't forget to cite
 Blobel's original work.
 
-Have a look at the APLCON++ examples how to use this interface:
+Please report bugs and improvements!
 
-[src/example](src/example)
+## Installation and Usage
 
-Please report bugs and improvements! The interface using variables
-defined by string is considered stable, but there will be some
-interface for some more complex data types available soon.
+To build this project, you need
+  * GNU compiler version >4.7.2 with g++ and gfortran
+  * cmake version >2.6
 
-To build this project, execute
+Then do a standard out-of-source build by executing
 ```
 mkdir build
 cd build
 cmake ..
 make
 ```
+
+You'll find some executable examples and a library called `libaplcon++.so`.
+
+Also have a look at the provided [APLCON++ examples code](src/example)
+how to use this interface.
+
+## TODO
+
+  * Implement linked covariances also for linked variables...
+  * Actually test it as a kinfitter
 

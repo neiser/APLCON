@@ -157,7 +157,8 @@ APLCON::Result_t APLCON::DoFit()
   // the main convergence loop
   int aplcon_ret = -1;
   do {
-    // evaluate the constraints F_func and store results in F via iterator F_it
+    // evaluate the constraints F_func and
+    // store results in F via iterator F_it
     auto F_it = F.begin();
     for(size_t i=0; i<F_func.size(); ++i) {
       for(const auto& v : F_func[i]()) {
@@ -239,7 +240,7 @@ APLCON::Result_t APLCON::DoFit()
       *(before.Values[k]) = X[i];
 
       const size_t V_i = (i+1)*(i+2)/2-1;
-      var.Sigma = {*(before.Values[k]), sqrt(V[V_i])};
+      var.Sigma = {*(before.Sigmas[k]), sqrt(V[V_i])};
       //
       var.Covariances.Before.resize(X.size());
       var.Covariances.After.resize(X.size());
@@ -272,14 +273,19 @@ APLCON::Result_t APLCON::DoFit()
 void APLCON::Init()
 {
   if(initialized && instance_id == instance_lastfit) {
-    // copy again the linked variables to X,
-    // and sigmas to diagonal V after original V_before
-    for(const auto& var : variables) {
-
-    }
-
     // reset APLCON for next fit
     c_aplcon_aplcon(nVariables, nConstraints);
+
+    // copy again the linked variables to X,
+    // and sigmas to diagonal V after original V_before
+    for(auto& it_var : variables) {
+      const Variable_t& var = it_var.second;
+      auto X_offset = X.begin() + var.XOffset;
+      auto dereference = [] (double* d) {return *d;};
+      transform(var.Values.begin(),var.Values.end(), X_offset, dereference);
+      V = V_before;
+      //transform(var.Sigmas.begin(),var.Sigmas.end(), X_offset, dereference);
+    }
     return;
   }
 
@@ -292,9 +298,9 @@ void APLCON::Init()
   // for the constraints later and also to unmap results of APLCON in DoFit
   nVariables = 0;
   X.clear();
-  X.reserve(2*variables.size()); // assume only simple variables
   V.clear();
-  V.reserve((X.size() << 1)/2); // another estimate for V's size
+  X.reserve(2*variables.size()); // best guess, nVariables will be known later
+  V.reserve((X.size() << 1)/2); // another estimate for V's size N^2/2 =~ N*(N+1)/2
   for(auto& it_var : variables) {
     Variable_t& var = it_var.second;
     size_t offset = X.size();
@@ -313,9 +319,10 @@ void APLCON::Init()
       X.push_back(*(var.Values[i])); // copy initial X values
 
       // take care of diagonal elements in V
+      // set off diagonal to zero
       const size_t j = offset+i;
       const size_t V_j = (j+1)*(j+2)/2-1;
-      V.resize(V_j+1,0);
+      V.resize(V_j+1, 0);
       V[V_j] = pow(*(var.Sigmas[i]),2);
     }
   }
