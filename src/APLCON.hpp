@@ -9,7 +9,35 @@
 #include <type_traits>
 #include <typeinfo>
 #include <iostream>
+#include <sstream>
 
+
+#ifdef __GNUG__
+#include <cstdlib>
+#include <memory>
+#include <cxxabi.h>
+
+std::string demangle(const char* name) {
+
+    int status = -4; // some arbitrary value to eliminate the compiler warning
+
+    // enable c++11 by passing the flag -std=c++11 to g++
+    std::unique_ptr<char, void(*)(void*)> res {
+        abi::__cxa_demangle(name, NULL, NULL, &status),
+        std::free
+    };
+
+    return (status==0) ? res.get() : name ;
+}
+
+#else
+
+// does nothing if not g++
+std::string demangle(const char* name) {
+    return name;
+}
+
+#endif
 
 
 /**
@@ -165,45 +193,43 @@ public:
                     const std::vector<double>& sigmas,
                     const std::vector<Variable_Settings_t>& settings = {}
       );
+
+
   /**
    * @brief AddConstraint
    * @param name unique label for the constraint
    * @param referred variable names the constraint should act on
    * @param constraint lambda function taking varnames size double arguments, and return double. Should vanish if fulfilled.
    */
-  template<typename T>
+  template<typename F>
   void AddConstraint(const std::string& name,
                      const std::vector<std::string>& varnames,
-                     const T& constraint)
+                     const F& constraint)
   {
     CheckMapKey("Linked constraint", name, constraints);
-    //auto f = make_function(constraint);
-    //std::cout << f << std::endl;
-    const size_t n = function_traits<T>::n_args;
-    using r_type = typename function_traits<T>::r_type;
-    static_assert(
-          std::is_same<r_type, std::vector<double> >::value ||
-          std::is_same<r_type, double >::value,
-          "Constraint function does not return double or vector of double.");
-    //cout << std::is_same< typename function_traits<F>::r_type, std::vector<double> << endl;
-    //typedef t = function_traits<T>::r_type;
-    //const std::type_info t = func_return_type<decltype(f)>::value;
+
+    using trait = function_traits<F>;
+    constexpr size_t n = trait::arity; // number of arguments in T
+    using r_type = typename trait::return_type;
+    constexpr bool returns_double = std::is_same<r_type, double >::value;
+    constexpr bool returns_vector = std::is_same<r_type, std::vector<double> >::value;
+
+    static_assert(returns_double || returns_vector, "Constraint function does not return double or vector of double.");
+    static_assert(trait::is_functor, "Only functors are supported as constraints");
+
     if(varnames.size() != n) {
-      throw std::logic_error("Constraint function argument number does not match the number of varnames.");
+      std::stringstream msg;
+      msg << "Constraint function argument number " << n <<
+             " does not match the number of varnames " << varnames.size();
+      throw std::logic_error(msg.str());
     }
-    //typename function_traits<decltype(f)>::r_type bla;
-    const auto& b = bind_constraint(std::enable_if<function_traits<T>::returns_double>(),
+
+    const auto& b = bind_constraint(std::enable_if<returns_double>(),
                                     constraint, build_indices<n>{});
     constraints[name] = {varnames, b};
     initialized = false;
   }
 
-  //  void Test(const std::string& name) {
-
-  //    std::cout << *(variables[name].Values[0]) << std::endl;
-  //    std::cout << variables[name].Values[0] << std::endl;
-  //    (*(variables[name].Values[0]))++;
-  //  }
 
   // some printout formatting stuff
   // used in overloaded << operators
@@ -215,6 +241,10 @@ public:
 
 
 private:
+
+  enum class ConstraintType {
+    Simple, Complex
+  };
 
   struct constraint_t {
     std::vector<std::string> VariableNames;
@@ -267,21 +297,68 @@ private:
   // some extra stuff for having a nice constraint interface
 
   // get some function traits like return type and number of arguments
-  // based on http://stackoverflow.com/questions/20722918/how-to-make-c11-functions-taking-function-parameters-accept-lambdas-automati/
-  // and http://stackoverflow.com/questions/9044866/how-to-get-the-number-of-arguments-of-stdfunction
+  // based on https://functionalcpp.wordpress.com/2013/08/05/function-traits/
 
-  template <typename T>
+  // functor
+  template<class F>
   struct function_traits
-      : public function_traits<decltype(&T::operator())>
-  {};
+  {
+  private:
+    using call_type = function_traits<decltype(&F::operator())>;
+  public:
+    using return_type = typename call_type::return_type;
 
-  template <typename ClassType, typename ReturnType, typename... Args>
-  struct function_traits<ReturnType(ClassType::*)(Args...) const> {
-    //typedef std::function<ReturnType (Args...)> f_type;
-    static const size_t n_args = sizeof...(Args);
-    using r_type = ReturnType;
-    static const bool returns_double = std::is_same<ReturnType, double>::value;
+    static constexpr std::size_t arity = call_type::arity - 1;
+    static constexpr bool is_functor = true;
+
+    template <std::size_t N>
+    struct argument
+    {
+      static_assert(N < arity, "error: invalid parameter index.");
+      using type = typename call_type::template argument<N+1>::type;
+    };
+
   };
+
+  template<typename R, typename... Args>
+  struct function_traits<R(Args...)>
+  {
+    using return_type = R;
+
+    static constexpr std::size_t arity = sizeof...(Args);
+    static constexpr bool is_functor = false;
+
+    template <std::size_t N>
+    struct argument
+    {
+      static_assert(N < arity, "error: invalid parameter index.");
+      using type = typename std::tuple_element<N,std::tuple<Args...>>::type;
+    };
+
+  };
+
+  template<class F>
+  struct function_traits<F&> : public function_traits<F> {};
+
+  template<class F>
+  struct function_traits<F&&> : public function_traits<F> {};
+
+  // function pointer
+  template<typename R, typename... Args>
+  struct function_traits<R(*)(Args...)> : public function_traits<R(Args...)> {};
+
+  // member function pointer
+  template<class C, class R, class... Args>
+  struct function_traits<R(C::*)(Args...)> : public function_traits<R(C&,Args...)> {};
+
+  // const member function pointer
+  template<class C, class R, class... Args>
+  struct function_traits<R(C::*)(Args...) const> : public function_traits<R(C&,Args...)> {};
+
+  // member object pointer
+  template<class C, class R>
+  struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
+
 
   // this little template fun is called "pack of indices"
   // it enables the nice definition of constraints via AddConstraint(...) method
