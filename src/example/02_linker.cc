@@ -36,11 +36,15 @@ int main() {
 
   a.LinkVariable("BF_tau",       // name
                  linker(BF_tau), // give double* vector
-                 {0.03,0.03}     // give sigmas for field A and B, {0.03} would also work (gets expanded for all values)
+                 // give sigmas for field A and B,
+                 // {0.03} would also work (gets expanded for all values)
+                 // on newer gcc versions, you may even
+                 // drop the vector<double> declaraton...
+                 vector<double>{0.03,0.03}
                  );
   // second variable. You can optionally specify settings,
   // and if you provide a sigma of 0 then the
-  a.LinkVariable("BF_e", linker(BF_e), {0.01,0.03});
+  a.LinkVariable("BF_e", linker(BF_e), vector<double>{0.01,0.03});
 
   // accordingly, when defining constraints, you get vectors as arguments
   // in the order the linker function (from above) returns it
@@ -75,7 +79,7 @@ int main() {
   // second variable. You can optionally specify settings,
   // and if you provide a sigma of 0 then the
   b.LinkVariable("BF_e",   linker(BF_e),   linker(BF_e_sigma));
-  b.LinkVariable("BF_tau", linker(BF_tau), {0.03,0.03});
+  b.LinkVariable("BF_tau", linker(BF_tau), vector<double>{0.03,0.03});
 
   b.AddConstraint("BF_e_equal",   {"BF_e"},   equality_constraint);
   b.AddConstraint("BF_tau_equal", {"BF_tau"}, equality_constraint);
