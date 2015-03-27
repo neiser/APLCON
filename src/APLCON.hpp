@@ -215,7 +215,7 @@ public:
         (std::enable_if<wants_double>(),
          constraint, APLCON_::build_indices<n>{});
 
-    constraints[name] = {varnames, bound};
+    constraints[name] = {varnames, bound, wants_double};
     initialized = false;
   }
 
@@ -244,6 +244,7 @@ private:
   struct constraint_t {
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
+    bool WantsDouble; // true if Function takes single double as all arguments (set by AddConstraint)
   };
 
   // since a variable can represent multiple values

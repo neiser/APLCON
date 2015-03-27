@@ -275,7 +275,11 @@ APLCON::Result_t APLCON::DoFit()
       *(before.Values[k]) = X[i];
 
       const size_t V_i = (i+1)*(i+2)/2-1;
-      var.Sigma = {*(before.Sigmas[k]), sqrt(V[V_i])};
+      // pow/sqrt of covariance is actually the only calcution the wrapper does
+      // the rest is done by APLCON...
+      const double after_sigma = sqrt(V[V_i]);
+      var.Sigma = {*(before.Sigmas[k]), after_sigma};
+      *(before.Sigmas[k]) = after_sigma;
 
       // copy the covariances, respecting that V is symmetrized
       var.Covariances.Before.resize(X.size());
@@ -374,15 +378,22 @@ void APLCON::Init()
   F_func.reserve(constraints.size());
   for(const auto& c_map : constraints) {
     // build the vector of double pointers
-    const constraint_t& c = c_map.second;
+    const constraint_t& constraint = c_map.second;
     vector< vector<const double*> > args;
-    args.reserve(c.VariableNames.size()); // args might be smaller, but probably not larger
-    for(const string& varname : c.VariableNames) {
+    args.reserve(constraint.VariableNames.size()); // args usually smaller, but probably not larger (but not excluded)
+    for(const string& varname : constraint.VariableNames) {
       const auto& index = variables.find(varname);
       if(index == variables.end()) {
         throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
       }
       const variable_t& var = index->second;
+      // check if constraint fits to variables
+      if(constraint.WantsDouble && var.Values.size()>1) {
+        stringstream msg;
+        msg << "Constraint '" << c_map.first << "' wants only single double arguments, "
+            << "but '" << varname << "' consists of " << var.Values.size() << " (i.e. more than 1) values.";
+        throw logic_error(msg.str());
+      }
       // build the vector of pointers to X values
       vector<const double*> p(var.Values.size());
       const auto& X_offset = X.begin()+var.XOffset;
@@ -390,7 +401,7 @@ void APLCON::Init()
       // and store it in args
       args.push_back(p);
     }
-    const auto& func = bind(c.Function, args);
+    const auto& func = bind(constraint.Function, args);
     // now, since we have bound the func, we can execute it once
     // to determine the returned number of values and
     // thus obtain the number of constraints

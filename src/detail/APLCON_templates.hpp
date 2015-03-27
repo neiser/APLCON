@@ -18,6 +18,8 @@ T* make_pointer(T& t) {
 template <typename T>
 void copy_pointers(std::vector<T>& source, std::vector<T*>& target)
 {
+  if(source.size()==0)
+    return;
   target.resize(source.size());
   std::transform(source.begin(), source.end(), target.begin(), make_pointer<T>);
 }
