@@ -179,9 +179,9 @@ public:
                      const Functor& constraint)
   {
     CheckMapKey("Constraint", name, constraints);
-    
-    // define shortcut, but need "typedef", not "using" for older gcc versions... 
-    typedef APLCON_::function_traits<Functor> trait; 
+
+    // define shortcut, but need "typedef", not "using" for older gcc versions...
+    typedef APLCON_::function_traits<Functor> trait;
 
     // non functors are kind of hard to bind later in bind_constraint,
     // so we forbid this here
@@ -319,7 +319,7 @@ private:
         std::transform(x[i].begin(), x[i].end(),
                        x_[i].begin(),
                        [] (const double* v) { return *v; }
-                       );
+        );
       }
       return APLCON_::vectorize_if<R>::get(f(std::move(x_[I])...));
     };

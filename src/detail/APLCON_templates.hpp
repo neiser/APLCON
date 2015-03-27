@@ -13,16 +13,16 @@ struct vectorize_if {};
 
 template<>
 struct vectorize_if<true>  {
-    static std::vector<double> get(const double& v) {
-        return {v};
-    }
+  static std::vector<double> get(const double& v) {
+    return {v};
+  }
 };
 
 template<>
 struct vectorize_if<false>  {
-    static std::vector<double> get(const std::vector<double>& v) {
-        return std::move(v);
-    }
+  static std::vector<double> get(const std::vector<double>& v) {
+    return std::move(v);
+  }
 };
 
 // get some function traits like return type and number of arguments
@@ -129,20 +129,20 @@ namespace APLCON_ {
 #ifdef __GNUG__
 std::string demangle(const char* name) {
 
-    int status = -4; // some arbitrary value to eliminate the compiler warning
+  int status = -4; // some arbitrary value to eliminate the compiler warning
 
-    // enable c++11 by passing the flag -std=c++11 to g++
-    std::unique_ptr<char, void(*)(void*)> res {
-        abi::__cxa_demangle(name, NULL, NULL, &status),
-                std::free
-    };
+  // enable c++11 by passing the flag -std=c++11 to g++
+  std::unique_ptr<char, void(*)(void*)> res {
+    abi::__cxa_demangle(name, NULL, NULL, &status),
+        std::free
+  };
 
-    return (status==0) ? res.get() : name ;
+  return (status==0) ? res.get() : name ;
 }
 #else
 // does nothing if not g++
 std::string demangle(const char* name) {
-    return name;
+  return name;
 }
 #endif
 
