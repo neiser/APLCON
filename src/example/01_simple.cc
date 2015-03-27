@@ -29,19 +29,19 @@ int main() {
   a.AddMeasuredVariable("BF_tau_A", 0.095,  0.03);
   a.AddMeasuredVariable("BF_tau_B", 0.14,   0.03);
 
-  // setup a lambda function, which returns 0 if the provided parameters are equal
-  auto make_equal = [] (double a, double b) { return a - b; };
+  // setup a lambda function which returns 0 if the provided parameters are equal
+  auto equality_constraint = [] (double a, double b) { return a - b; };
 
   // those two constraints (fulfilled when returning zero)
   // require the equality of the two measured values
   // for the BF of each lepton
   // this is achieved by mapping the lambda function to the named variables
-  a.AddConstraint("BF_e_equal", {"BF_e_A", "BF_e_B"}, make_equal);
-  a.AddConstraint("BF_tau_equal", {"BF_tau_A", "BF_tau_B"}, make_equal);
+  a.AddConstraint("BF_e_equal", {"BF_e_A", "BF_e_B"}, equality_constraint);
+  a.AddConstraint("BF_tau_equal", {"BF_tau_A", "BF_tau_B"}, equality_constraint);
 
   // copy a to b with different name, and add another constraint
   APLCON b(a, "WITH lepton universality");
-  b.AddConstraint("BF_equal", {"BF_e_A", "BF_tau_A"}, make_equal);
+  b.AddConstraint("BF_equal", {"BF_e_A", "BF_tau_A"}, equality_constraint);
 
   // now we can finally do the different fits (some with correlations)
 

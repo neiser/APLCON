@@ -31,4 +31,3 @@ how to use this interface.
 
   * Implement linked covariances also for linked variables...
   * Actually test it as a kinfitter
-

@@ -234,14 +234,18 @@ APLCON::Result_t APLCON::DoFit()
 
       Result_Variable_t var;
       stringstream s_name;
-      s_name << name << "[" << k << "]";
+      s_name << name;
+      if(before.Values.size()>1) {
+        s_name << "[" << k << "]";
+      }
       var.Name = s_name.str();
       var.Value = {*(before.Values[k]), X[i]};
       *(before.Values[k]) = X[i];
 
       const size_t V_i = (i+1)*(i+2)/2-1;
       var.Sigma = {*(before.Sigmas[k]), sqrt(V[V_i])};
-      //
+
+      // copy the covariances, respecting that V is symmetrized
       var.Covariances.Before.resize(X.size());
       var.Covariances.After.resize(X.size());
       for(size_t j=0; j<X.size(); j++) {
