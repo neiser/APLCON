@@ -3,9 +3,9 @@
 
 using namespace std;
 
-//vector<double> make_equal(vector<const double*> a) {
-//  return  {*a[0] - *a[1]};
-//}
+vector<double> make_equal_(vector<const double*> a) {
+  return  {*a[0] - *a[1]};
+}
 
 int main() {
 
@@ -25,9 +25,8 @@ int main() {
   //a.LinkVariable("BF_tau", linker(BF_tau), {0.03,0.03});
 
   auto make_equal = [] (vector<const double*> a) -> vector<double> {
-    return {*a[0] - *a[1]};
+    return make_equal_(a);
   };
-
 
 
   a.AddConstraint("BF_e_equal",   {"BF_e"}, make_equal);

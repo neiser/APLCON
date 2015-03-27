@@ -11,6 +11,8 @@
 #include <iostream>
 #include <sstream>
 
+
+
 /**
  * @brief The APLCON class
  * Provides a C++11'ish wrapper around
@@ -180,13 +182,15 @@ public:
     CheckMapKey("Linked constraint", name, constraints);
 
     using trait = function_traits<F>;
+
+    static_assert(trait::is_functor, "Only functors are supported as constraints, wrap and bind it if you want to pass such things.");
+
     constexpr size_t n = trait::arity; // number of arguments in T
     using r_type = typename trait::return_type;
+
     constexpr bool returns_double = std::is_same<r_type, double >::value;
     constexpr bool returns_vector = std::is_same<r_type, std::vector<double> >::value;
-
     static_assert(returns_double || returns_vector, "Constraint function does not return double or vector of double.");
-    static_assert(trait::is_functor, "Only functors are supported as constraints");
 
     if(varnames.size() != n) {
       std::stringstream msg;
@@ -291,6 +295,13 @@ private:
 
   };
 
+  template<class F>
+  struct function_traits<F&> : public function_traits<F> {};
+
+  template<class F>
+  struct function_traits<F&&> : public function_traits<F> {};
+
+  // anything else what is callable
   template<typename R, typename... Args>
   struct function_traits<R(Args...)>
   {
@@ -308,11 +319,7 @@ private:
 
   };
 
-  template<class F>
-  struct function_traits<F&> : public function_traits<F> {};
 
-  template<class F>
-  struct function_traits<F&&> : public function_traits<F> {};
 
   // function pointer
   template<typename R, typename... Args>
