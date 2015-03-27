@@ -52,4 +52,32 @@ int main() {
   a.AddConstraint("equal_momentum",  {"Vec1_p", "Vec2_p"}, equal_momentum_3);
 
   a.DoFit();
+
+
+//  auto scalar2scalar = [] (const double& a) -> double {
+//    return  a;
+//  };
+
+//  auto scalar2vector = [] (const double& a) -> vector<double> {
+//    return  {a};
+//  };
+
+//  auto vector2scalar = [] (const vector<double>& a) -> double {
+//    return  a[0] - a[1];
+//  };
+
+//  auto vector2vector = [] (const vector<double>& a) -> vector<double> {
+//    return  {a[0] - a[1]};
+//  };
+
+//  a.AddConstraint("1", {"BF_e"}, scalar2scalar);
+//  a.AddConstraint("2", {"BF_e"}, scalar2vector);
+//  a.AddConstraint("3", {"BF_e"}, vector2scalar);
+//  a.AddConstraint("4", {"BF_e"}, vector2vector);
+
+  //  auto wrong = [] (const vector<double>& a, double b) -> vector<double> {
+  //    return  {a[0] - a[1] + b};
+  //  };
+
+    //a.AddConstraint("4", {"BF_e", "BF_tau"}, wrong);
 }

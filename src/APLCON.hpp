@@ -156,7 +156,12 @@ public:
 
   void LinkVariable(const std::string& name,
                     const std::vector<double*>& values,
-                    const std::vector<double*> &sigmas,
+                    const std::vector<double*>& sigmas,
+                    const std::vector<Variable_Settings_t>& settings = {}
+      );
+  void LinkVariable(const std::string& name,
+                    const std::vector<double*>& values,
+                    const std::vector<double>&  sigmas,
                     const std::vector<Variable_Settings_t>& settings = {}
       );
 
@@ -199,7 +204,7 @@ public:
     constexpr size_t n = trait::arity; // number of arguments in Functor
     if(varnames.size() != n) {
       std::stringstream msg;
-      msg << "Constraint function argument number (" << n <<
+      msg << "Constraint '" << name << "': Function argument number (" << n <<
              ") does not match the number of provided varnames (" << varnames.size() << ")";
       throw std::logic_error(msg.str());
     }
@@ -243,12 +248,16 @@ private:
 
   // since a variable can represent multiple values
   // we need to store a little symmetric submatrix as a vector (as V) here
-  // since we can link them, it's similar to Variable_t
+  // since we can link values via pointers, it's similar to Variable_t
   struct covariance_t {
-
+    std::vector<double*> Values;
+    std::vector<double>  StoredValues;
+    size_t VOffset1; // offset in V in row direction for first variable
+    size_t VOffset2;
   };
 
   // values with starting values (works since map is ordered)
+  typedef std::map<std::string, variable_t> variables_t;
   std::map<std::string, variable_t> variables;
   int nVariables; // number of simple variables
   // off-diagonal covariances addressed by pairs of variable names
@@ -285,6 +294,12 @@ private:
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const APLCON::Variable_Settings_t& settings);
 
+  variables_t::iterator LinkVariable(const std::string& name,
+                    const std::vector<double*>& values,
+                    const size_t sigma_size,
+                    const std::vector<Variable_Settings_t>& settings
+      );
+
   template<typename T>
   void CheckMapKey(const std::string& tag, const std::string& name,
                    std::map<std::string, T> c) {
@@ -295,8 +310,6 @@ private:
       throw std::logic_error(tag+" with name '"+name+"' already added");
     }
   }
-
-
 
   // define the two different constraint binding functions
   // which are selected on compile-time via their first two arguments

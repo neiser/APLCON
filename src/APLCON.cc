@@ -91,6 +91,33 @@ void APLCON::LinkVariable(const string &name,
                           const std::vector<double*> &values,
                           const std::vector<double*> &sigmas,
                           const std::vector<APLCON::Variable_Settings_t> &settings) {
+  // linked sigmas are easy
+  auto it = LinkVariable(name, values, sigmas.size(), settings);
+  it->second.Sigmas = sigmas;
+}
+
+void APLCON::LinkVariable(const string &name,
+                          const std::vector<double*>& values,
+                          const std::vector<double>& sigmas,
+                          const std::vector<APLCON::Variable_Settings_t> &settings) {
+  // internally stored sigmas
+  // be nice and offer to set sigma for all values to one single provided value
+  vector<double> sigmas_(1);
+  if(sigmas.size()==1) {
+    sigmas_.resize(values.size(), sigmas[0]);
+  }
+  else {
+    sigmas_ = sigmas; // copy
+  }
+  auto it = LinkVariable(name, values, sigmas_.size(), settings);
+  it->second.StoredSigmas = sigmas_;
+}
+
+APLCON::variables_t::iterator APLCON::LinkVariable(const string &name,
+                          const std::vector<double*>& values,
+                          const size_t sigmas_size,
+                          const std::vector<APLCON::Variable_Settings_t> &settings) {
+
   CheckMapKey("Linked Variable", name, variables);
 
   const size_t n = values.size();
@@ -99,25 +126,30 @@ void APLCON::LinkVariable(const string &name,
   }
 
   variable_t var;
-  if(sigmas.size() != n) {
-    throw std::logic_error("Sigmas size does not match number of of provided values");
+  if(sigmas_size != n) {
+    throw std::logic_error("Sigmas size does not match number of provided values");
   }
 
+  // check settings, set to defaults if none given
   if(settings.size() == 0) {
     var.Settings.resize(n, Variable_Settings_t::Default);
   }
+  else if(settings.size() == 1) {
+    var.Settings.resize(n, settings[0]);
+  }
   else if(settings.size() != n) {
-    throw std::logic_error("Sigmas size does not match number of provided values");
+    // 0, 1 or it must fit to values...
+    throw std::logic_error("Settings size does not match number of provided values");
   }
   else {
     var.Settings = settings;
   }
 
-  // set values and sigmas
+  // set values, that's easy
   var.Values = values;
-  var.Sigmas = sigmas;
 
-  variables.insert(make_pair(name, var));
+  auto p = variables.insert(make_pair(name, var));
+  return p.first;
 }
 
 void APLCON::SetCovariance(const string &var1, const string &var2, const double cov)
@@ -281,15 +313,16 @@ void APLCON::Init()
     c_aplcon_aplcon(nVariables, nConstraints);
 
     // copy again the linked variables to X,
-    // and sigmas to diagonal V after original V_before
     for(auto& it_var : variables) {
       const variable_t& var = it_var.second;
       auto X_offset = X.begin() + var.XOffset;
       auto dereference = [] (double* d) {return *d;};
       transform(var.Values.begin(),var.Values.end(), X_offset, dereference);
-      V = V_before;
-      //transform(var.Sigmas.begin(),var.Sigmas.end(), X_offset, dereference);
     }
+
+    // TODO: and sigmas to diagonal V after original V_before?
+    V = V_before;
+
     return;
   }
 
