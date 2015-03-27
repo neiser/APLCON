@@ -16,6 +16,9 @@ int main() {
     double B;
   };
 
+  a.AddMeasuredVariable("test", 5, 0.4);
+  return 0;
+
 //  BF_t BF_e   = {0.105,0.135};
 //  BF_t BF_tau = {0.095,0.14};
 

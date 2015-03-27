@@ -52,8 +52,13 @@ public:
 
   struct Variable_t {
     std::vector<double*> Values;
-    std::vector<double> Sigmas;
+    std::vector<double*> Sigmas;
     std::vector<Variable_Settings_t> Settings;
+    // storage for non-linked variables
+    // see AddVariable/LinkVariable for usage
+    std::vector<double> StoredValues;
+    std::vector<double> StoredSigmas;
+    size_t XOffset; // only valid after Init()
   };
 
   enum class Result_Status_t {
@@ -129,8 +134,8 @@ public:
    * @param stepSize step size for numerical derivation
    */
   void AddMeasuredVariable(const std::string& name,
-                           const double value = NaN,
-                           const double sigma = NaN,
+                           const double value,
+                           const double sigma,
                            const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief AddUnmeasuredVariable
@@ -141,7 +146,7 @@ public:
    * @param stepSize step size for numerical derivation
    */
   void AddUnmeasuredVariable(const std::string& name,
-                             const double value = NaN,
+                             const double value,
                              const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief AddFixedVariable
@@ -151,8 +156,8 @@ public:
    * @param distribution optional type of distribution
    */
   void AddFixedVariable(const std::string& name,
-                        const double value = NaN,
-                        const double sigma = NaN,
+                        const double value,
+                        const double sigma,
                         const Distribution_t& distribution = Distribution_t::Gaussian
       );
 
@@ -162,7 +167,7 @@ public:
 
   void LinkVariable(const std::string& name,
                     const std::vector<double*>& values,
-                    const std::vector<double>& sigmas,
+                    const std::vector<double*> &sigmas,
                     const std::vector<Variable_Settings_t>& settings = {}
       );
 
@@ -216,7 +221,7 @@ public:
         (std::enable_if<wants_double>(),
          constraint, APLCON_::build_indices<n>{});
 
-    constraints[name] = {varnames, bound, returns_double};
+    constraints[name] = {varnames, bound};
     initialized = false;
   }
 
@@ -234,7 +239,6 @@ private:
   struct constraint_t {
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
-    bool ReturnsDouble;
   };
 
   // values with starting values (works since map is ordered)
@@ -253,7 +257,7 @@ private:
   // and some helper variables
   std::vector<double> X, V, F, V_before;
   std::vector< std::function<std::vector<double>()> > F_func;
-  std::map<std::string, size_t> X_s2i; // from varname to index in X
+  //std::map<std::string, size_t> X_s2i; // from varname to index in X
 
   // since APLCON is stateful, multiple instances of this class
   // need to init APLCON again after switching between them
