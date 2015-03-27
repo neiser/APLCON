@@ -349,15 +349,12 @@ void APLCON::Init()
       if(index == variables.end()) {
         throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
       }
-      const size_t offset = index->second.XOffset;
-      // we need the number of values in the variable
-      const Variable_t& var = variables[varname];
-      const size_t n = var.Values.size();
+      const Variable_t& var = index->second;
       // build the vector of pointers to X values
-      vector<const double*> p(n);
-      for(size_t i=0; i<n; i++) {
-        p[i] = &X[offset+i];
-      }
+      vector<const double*> p(var.Values.size());
+      const auto& X_offset = X.begin()+var.XOffset;
+      transform(X_offset, X_offset+p.size(), p.begin(), APLCON_::make_pointer<double>);
+      // and store it in args
       args.push_back(p);
     }
     const auto& func = bind(c.Function, args);

@@ -9,13 +9,20 @@
 namespace APLCON_ {
 
 // some little helper functions
+
+template<typename T>
+T* make_pointer(T& t) {
+  return &t;
+}
+
 template <typename T>
 void copy_pointers(std::vector<T>& source, std::vector<T*>& target)
 {
   target.resize(source.size());
-  auto f = [](T& t) -> T* { return &t; };
-  std::transform(source.begin(), source.end(), target.begin(), f);
+  std::transform(source.begin(), source.end(), target.begin(), make_pointer<T>);
 }
+
+
 
 // vectorize by template, that means wrap double value around initializer list {}
 
