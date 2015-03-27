@@ -3,9 +3,9 @@
 
 using namespace std;
 
-vector<double> make_equal_(vector<const double*> a) {
-  return  {*a[0] - *a[1]};
-}
+//vector<double> make_equal_(const vector<const double*>& a) {
+//  return  {a[0] - a[1]};
+//}
 
 int main() {
 
@@ -24,12 +24,35 @@ int main() {
   //a.LinkVariable("BF_e", linker(BF_e), {0.01,0.03});
   //a.LinkVariable("BF_tau", linker(BF_tau), {0.03,0.03});
 
-  auto make_equal = [] (vector<const double*> a) -> vector<double> {
-    return make_equal_(a);
+  auto scalar2scalar = [] (const double& a) -> double {
+    return  a;
   };
 
+  auto scalar2vector = [] (const double& a) -> vector<double> {
+    return  {a};
+  };
 
-  a.AddConstraint("BF_e_equal",   {"BF_e"}, make_equal);
+  auto vector2scalar = [] (const vector<double>& a) -> double {
+    return  a[0] - a[1];
+  };
+
+  auto vector2vector = [] (const vector<double>& a) -> vector<double> {
+    return  {a[0] - a[1]};
+  };
+
+  a.AddConstraint("1", {"BF_e"}, scalar2scalar);
+  a.AddConstraint("2", {"BF_e"}, scalar2vector);
+  a.AddConstraint("3", {"BF_e"}, vector2scalar);
+  a.AddConstraint("4", {"BF_e"}, vector2vector);
+
+  auto wrong = [] (const vector<double>& a, double b) -> vector<double> {
+    return  {a[0] - a[1] + b};
+  };
+
+  //a.AddConstraint("4", {"BF_e", "BF_tau"}, wrong);
+
+
+  //a.AddConstraint("BF_e_equal",   {"BF_e"}, make_equal);
   //a.AddConstraint("BF_tau_equal", {"BF_tau"}, make_equal);
 
   //cout << a.DoFit() << endl;

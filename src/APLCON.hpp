@@ -10,7 +10,53 @@
 #include <typeinfo>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
+#ifdef __GNUG__
+#include <cstdlib>
+#include <memory>
+#include <cxxabi.h>
+
+std::string demangle(const char* name) {
+
+    int status = -4; // some arbitrary value to eliminate the compiler warning
+
+    // enable c++11 by passing the flag -std=c++11 to g++
+    std::unique_ptr<char, void(*)(void*)> res {
+        abi::__cxa_demangle(name, NULL, NULL, &status),
+        std::free
+    };
+
+    return (status==0) ? res.get() : name ;
+}
+
+#else
+
+// does nothing if not g++
+std::string demangle(const char* name) {
+    return name;
+}
+
+#endif
+
+
+
+template<bool R>
+struct make_vector_if {};
+
+template<>
+struct make_vector_if<true>  {
+  static std::vector<double> get(const double& v) {
+    return {v};
+  }
+};
+
+template<>
+struct make_vector_if<false>  {
+  static std::vector<double> get(const std::vector<double>& v) {
+    return v;
+  }
+};
 
 
 /**
@@ -181,17 +227,28 @@ public:
   {
     CheckMapKey("Linked constraint", name, constraints);
 
-    using trait = function_traits<Functor>;
+    using trait = function_traits<Functor>; // little shortcut
 
-    static_assert(trait::is_functor, "Only functors are supported as constraints, wrap and bind it if you want to pass such things.");
+    // non functors are kind of hard to bind later in bind_constraint,
+    // so we forbid this here
+    static_assert(trait::is_functor, "Only functors are supported as constraints. Wrap and/or bind it if you want to pass such things.");
 
-    constexpr size_t n = trait::arity; // number of arguments in Functor
     using r_type = typename trait::return_type;
 
+    // compile-time check if the Functor returns the proper type
     constexpr bool returns_double = std::is_same<r_type, double >::value;
     constexpr bool returns_vector = std::is_same<r_type, std::vector<double> >::value;
     static_assert(returns_double || returns_vector, "Constraint function does not return double or vector<double>.");
 
+    // compile-time check if the Function wants only double's, or only vector of double's
+    // both bool's can never be true at the same time,
+    // so we require an exclusive or
+    constexpr bool wants_double = trait::template all_args<double>::value;
+    constexpr bool wants_vector = trait::template all_args< std::vector<double> >::value;
+    static_assert(wants_double ^ wants_vector, "Constraint function does not solely want double or solely vector<double>.");
+
+    // runtime check if given variable number matches to Functor
+    constexpr size_t n = trait::arity; // number of arguments in Functor
     if(varnames.size() != n) {
       std::stringstream msg;
       msg << "Constraint function argument number (" << n <<
@@ -199,8 +256,9 @@ public:
       throw std::logic_error(msg.str());
     }
 
-    const auto& b = bind_constraint(std::enable_if<returns_double>(),
-                                    constraint, build_indices<n>{});
+    // the flag wants_double selects the corresponding bind_constraint implementation
+    const auto& b = bind_constraint<returns_double>(std::enable_if<wants_double>(),
+                                                    constraint, build_indices<n>{});
 
     constraints[name] = {varnames, b};
     initialized = false;
@@ -270,10 +328,23 @@ private:
   // shortcuts for double limits (used in default values for methods above)
   const static double NaN;
 
-  // some extra stuff for having a nice constraint interface
+  // some extra stuff for having a nice constraint interface using bind_constraint (see below!)
 
   // get some function traits like return type and number of arguments
   // based on https://functionalcpp.wordpress.com/2013/08/05/function-traits/
+
+  template<template<typename,typename>class checker, typename... Ts>
+  struct is_all : std::true_type {};
+
+  template<template<typename,typename>class checker, typename T0, typename T1, typename... Ts>
+  struct is_all<checker, T0, T1, Ts...> :
+      std::integral_constant< bool, checker<T0, T1>::value && is_all<checker, T0, Ts...>::value>
+  {};
+
+  // std::decay removes const and reference qualifiers
+  // which spoils the type comparison we actually want...
+  template<typename... Ts>
+  using is_all_same_decayed = is_all< std::is_same, typename std::decay<Ts>::type ... >;
 
   // functor
   template<class F>
@@ -281,18 +352,15 @@ private:
   {
   private:
     using call_type = function_traits<decltype(&F::operator())>; // how to prevent the compiler message here for non-callable types?
+
   public:
     using return_type = typename call_type::return_type;
 
-    static constexpr std::size_t arity = call_type::arity - 1;
+    static constexpr std::size_t arity = call_type::arity;
     static constexpr bool is_functor = true;
 
-    template <std::size_t N>
-    struct argument
-    {
-      static_assert(N < arity, "error: invalid parameter index.");
-      using type = typename call_type::template argument<N+1>::type;
-    };
+    template <typename Compare>
+    struct all_args : call_type::template all_args<Compare> {};
 
   };
 
@@ -311,12 +379,8 @@ private:
     static constexpr std::size_t arity = sizeof...(Args);
     static constexpr bool is_functor = false;
 
-    template <std::size_t N>
-    struct argument
-    {
-      static_assert(N < arity, "error: invalid parameter index.");
-      using type = typename std::tuple_element<N,std::tuple<Args...>>::type;
-    };
+    template <typename Compare>
+    struct all_args : is_all_same_decayed<Args..., Compare> {};
 
   };
 
@@ -325,12 +389,14 @@ private:
   struct function_traits<R(*)(Args...)> : public function_traits<R(Args...)> {};
 
   // member function pointer
+  // ignore C, which makes all_args actually work...
   template<class C, class R, class... Args>
-  struct function_traits<R(C::*)(Args...)> : public function_traits<R(C&,Args...)> {};
+  struct function_traits<R(C::*)(Args...)> : public function_traits<R(Args...)> {};
 
   // const member function pointer
+  // ignore C, which makes all_args actually work...
   template<class C, class R, class... Args>
-  struct function_traits<R(C::*)(Args...) const> : public function_traits<R(C&,Args...)> {};
+  struct function_traits<R(C::*)(Args...) const> : public function_traits<R(Args...)> {};
 
   // member object pointer
   template<class C, class R>
@@ -352,45 +418,58 @@ private:
 
 
   // define the two different constraint binding functions
-  // which are selected on compile-time via their first argument
+  // which are selected on compile-time via their first two arguments
 
-  template <typename F, size_t... I>
-  std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
-  bind_constraint(std::enable_if<true>, const F& f, indices<I...>) const {
-    // similar to bind_constraint,
-    // but f takes now some vector's of doubles (instead of just one double)
-    auto fv = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
-      // "vectorize" the given constraint function f to fv
-      // by defining a lambda fv which is bound to the original f
-      // then fv can be called on vectors containing pointers to the values
-      // on which the constraint should be evaluated
-      // see DoFit/Init methods how those arguments for the returned function are constructed
-      std::vector<const double*> x_(sizeof...(I));
+  // the basic idea is to "vectorize" the given constraint function f to fv
+  // by defining a lambda fv which is std::bind'ed to the original f
+  // then fv can be called on vectors containing pointers to the values
+  // on which the constraint should be evaluated
+  // see DoFit/Init methods how those arguments for the returned function are constructed
+
+  // is it complicated by the fact that f may return scalar/vector and may want scalar/vector
+  // that's why bind_constraint has two dummy arguments which select the correct binding
+  // depending on the compile-time analysis of f in AddConstraint. This must be templated because
+  // otherwise the compiler evaluates the wrong f call
+
+  using constraint_function_t = std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>;
+
+  using constraint_function_scalar_t = std::function< double (const std::vector< std::vector<const double*> >&)>;
+
+  template <bool R, typename F, size_t... I>
+  constraint_function_t
+  bind_constraint(std::enable_if<true>, // wants_double
+                  const F& f, indices<I...>) const {
+    auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+      // dereference the single element inside the inner vector
+      // return vector with single element
+      return make_vector_if<R>::get(f(*(x[I][0])...));
+    };
+    return std::bind(f_wrap, f, std::placeholders::_1);
+  }
+
+  template <bool R, typename F, size_t... I>
+  constraint_function_t
+  bind_constraint(std::enable_if<false>, // wants vector
+                  const F& f, indices<I...>) const {
+    auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+      // this might be a little bit inefficient,
+      // since we need to allocate the space for the dereferenced double values
+      std::vector< std::vector<double> > x_(sizeof...(I));
       for(size_t i=0;i<sizeof...(I);i++) {
-        // size==0 should not appear due to construction in Init
-        x_.push_back(x[i][0]);
+        x_[i].resize(x[i].size());
+        std::transform(x[i].begin(), x[i].end(),
+                       x_[i].begin(),
+                       [] (const double* v) { return *v; }
+                       );
       }
-      // we can simplify now the f call by dereferencing here
-      return {f(*(x_[I])...)};
+      return make_vector_if<R>::get(f(std::move(x_[I])...));
     };
-    return std::bind(fv, f, std::placeholders::_1);
+    return std::move(std::bind(f_wrap, f, std::placeholders::_1));
   }
-
-  template <typename F, size_t... I>
-  std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>
-  bind_constraint(std::enable_if<false>, const F& f, indices<I...>) const {
-    // similar to bind_constraint,
-    // but f takes now some vector's of doubles (instead of just one double)
-    auto fv = [] (const F& f, const std::vector< std::vector<const double*> >& x) {
-      // TODO: Make vector<double> instead of pointers...?
-      return f(move(x[I])...);
-    };
-
-    return std::bind(fv, f, std::placeholders::_1);
-  }
-
 
 };
+
+
 
 // templated methods must be implemented in header file
 
