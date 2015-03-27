@@ -3,12 +3,13 @@
 
 #include <type_traits>
 #include <vector>
+#include <functional>
 
 namespace APLCON_ {
 
-// vectorize by templace, that means wrap double value around initializer list {}
+// vectorize by template, that means wrap double value around initializer list {}
 
-template<bool R>
+template<bool ReturnDouble>
 struct vectorize_if {};
 
 template<>

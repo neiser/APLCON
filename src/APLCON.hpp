@@ -273,7 +273,14 @@ private:
                    const APLCON::Variable_Settings_t& settings);
   template<typename T>
   void CheckMapKey(const std::string& tag, const std::string& name,
-                   std::map<std::string, T> c);
+                   std::map<std::string, T> c) {
+    if(name.empty()) {
+      throw std::logic_error(tag+" name empty");
+    }
+    if(c.find(name) != c.end()) {
+      throw std::logic_error(tag+" with name '"+name+"' already added");
+    }
+  }
 
   // shortcuts for double limits (used in default values for methods above)
   const static double NaN;
@@ -303,7 +310,7 @@ private:
       // return vector with single element
       return APLCON_::vectorize_if<R>::get(f(*(x[I][0])...));
     };
-    return std::bind(f_wrap, f, std::placeholders::_1);
+    return std::move(std::bind(f_wrap, f, std::placeholders::_1));
   }
 
   template <bool R, typename F, size_t... I>
@@ -328,24 +335,9 @@ private:
 
 };
 
-
-
-// templated methods must be implemented in header file
-
-template<typename T>
-void APLCON::CheckMapKey(const std::string& tag, const std::string& name, std::map<std::string, T> c) {
-  if(name.empty()) {
-    throw std::logic_error(tag+" name empty");
-  }
-  if(c.find(name) != c.end()) {
-    throw std::logic_error(tag+" with name '"+name+"' already added");
-  }
-}
-
 std::ostream& operator<< (std::ostream&, const APLCON::Limit_t&);
 std::ostream& operator<< (std::ostream&, const APLCON::Distribution_t&);
 std::ostream& operator<< (std::ostream&, const APLCON::Result_Status_t&);
 std::ostream& operator<< (std::ostream&, const APLCON::Result_t&);
-
 
 #endif // APLCON_HPP
