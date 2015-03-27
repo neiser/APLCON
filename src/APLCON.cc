@@ -78,7 +78,7 @@ void APLCON::AddVariable(const string &name, const double value, const double si
   CheckMapKey("Variable", name, variables);
 
 
-  Variable_t var;
+  variable_t var;
   var.StoredValues.emplace_back(value);
   var.StoredSigmas.emplace_back(sigma);
   var.Settings.emplace_back(settings);
@@ -98,7 +98,7 @@ void APLCON::LinkVariable(const string &name,
     throw std::logic_error("At least one value should be linked");
   }
 
-  Variable_t var;
+  variable_t var;
   if(sigmas.size() != n) {
     throw std::logic_error("Sigmas size does not match number of of provided values");
   }
@@ -125,25 +125,25 @@ void APLCON::SetCovariance(const string &var1, const string &var2, const double 
   if(var1.empty() || var2.empty()) {
     throw logic_error("Variable names cannot be empty strings");
   }
-  // assume covariance is gonna changed...
+  // assume covariance is gonna changed
   initialized = false;
 
   // search the covariances map
-  // but note that the pairs are symmetric
+  // but note that the pairs are symmetric (since the covariance matrix is)
   const pair<string, string>& p1 = make_pair(var1, var2);
   const pair<string, string>& p2 = make_pair(var2, var1);
   auto it1 = covariances.find(p1);
   if(it1 != covariances.end()) {
-    it1->second = cov;
+    //it1->second = cov;
     return;
   }
   auto it2 = covariances.find(p2);
   if(it2 != covariances.end()) {
-    it2->second = cov;
+    //it2->second = cov;
     return;
   }
   // not found, then add it
-  covariances.insert(make_pair(p1, cov));
+  //covariances.insert(make_pair(p1, cov));
 }
 
 
@@ -225,9 +225,9 @@ APLCON::Result_t APLCON::DoFit()
   // which makes debug output from  APLCON comparable to dumps of this structure
   result.Variables.reserve(X.size());
 
-  for(const auto& var_pair : variables) {
-    const string& name = var_pair.first;
-    const Variable_t& before = var_pair.second;
+  for(const auto& it_var : variables) {
+    const string& name = it_var.first;
+    const variable_t& before = it_var.second;
 
     for(size_t k=0;k<before.Values.size();k++) {
       size_t i = before.XOffset+k;
@@ -283,7 +283,7 @@ void APLCON::Init()
     // copy again the linked variables to X,
     // and sigmas to diagonal V after original V_before
     for(auto& it_var : variables) {
-      const Variable_t& var = it_var.second;
+      const variable_t& var = it_var.second;
       auto X_offset = X.begin() + var.XOffset;
       auto dereference = [] (double* d) {return *d;};
       transform(var.Values.begin(),var.Values.end(), X_offset, dereference);
@@ -306,7 +306,7 @@ void APLCON::Init()
   X.reserve(2*variables.size()); // best guess, nVariables will be known later
   V.reserve((X.size() << 1)/2); // another estimate for V's size N^2/2 =~ N*(N+1)/2
   for(auto& it_var : variables) {
-    Variable_t& var = it_var.second;
+    variable_t& var = it_var.second;
     size_t offset = X.size();
     var.XOffset = offset;
 
@@ -349,7 +349,7 @@ void APLCON::Init()
       if(index == variables.end()) {
         throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
       }
-      const Variable_t& var = index->second;
+      const variable_t& var = index->second;
       // build the vector of pointers to X values
       vector<const double*> p(var.Values.size());
       const auto& X_offset = X.begin()+var.XOffset;
@@ -407,7 +407,7 @@ void APLCON::Init()
     c_aplcon_apdlow(fit_settings.MinimalStepSizeFactor);
 
   for(const auto& it_var : variables) {
-    const Variable_t& var = it_var.second;
+    const variable_t& var = it_var.second;
     for(size_t j=0;j<var.Settings.size();j++) {
       const Variable_Settings_t& s = var.Settings[j];
       int i = j+var.XOffset;

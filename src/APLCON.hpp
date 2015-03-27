@@ -50,17 +50,6 @@ public:
     const static Variable_Settings_t Default;
   };
 
-  struct Variable_t {
-    std::vector<double*> Values;
-    std::vector<double*> Sigmas;
-    std::vector<Variable_Settings_t> Settings;
-    // storage for non-linked variables
-    // see AddVariable/LinkVariable for usage
-    std::vector<double> StoredValues;
-    std::vector<double> StoredSigmas;
-    size_t XOffset; // only valid after Init()
-  };
-
   enum class Result_Status_t {
     Success,
     NoConvergence,
@@ -236,16 +225,34 @@ public:
 
 private:
 
+  struct variable_t {
+    std::vector<double*> Values;
+    std::vector<double*> Sigmas;
+    std::vector<Variable_Settings_t> Settings;
+    // storage for non-linked variables
+    // see AddVariable/LinkVariable for usage
+    std::vector<double> StoredValues;
+    std::vector<double> StoredSigmas;
+    size_t XOffset; // only valid after Init()
+  };
+
   struct constraint_t {
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
   };
 
+  // since a variable can represent multiple values
+  // we need to store a little symmetric submatrix as a vector (as V) here
+  // since we can link them, it's similar to Variable_t
+  struct covariance_t {
+
+  };
+
   // values with starting values (works since map is ordered)
-  std::map<std::string, Variable_t> variables;
+  std::map<std::string, variable_t> variables;
   int nVariables; // number of simple variables
   // off-diagonal covariances addressed by pairs of variable names
-  std::map< std::pair<std::string, std::string>, double > covariances;
+  std::map< std::pair<std::string, std::string>, covariance_t > covariances;
   // the constraints
   // a constraint has a list of variable names and
   // a corresponding "vectorized" function evaluated on pointers to double
@@ -270,10 +277,14 @@ private:
 
   // global APLCON settings
   Fit_Settings_t fit_settings;
+  // shortcuts for double limits (used in default values for methods above)
+  const static double NaN;
 
+  // private methods
   void Init();
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const APLCON::Variable_Settings_t& settings);
+
   template<typename T>
   void CheckMapKey(const std::string& tag, const std::string& name,
                    std::map<std::string, T> c) {
@@ -285,8 +296,7 @@ private:
     }
   }
 
-  // shortcuts for double limits (used in default values for methods above)
-  const static double NaN;
+
 
   // define the two different constraint binding functions
   // which are selected on compile-time via their first two arguments
