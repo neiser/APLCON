@@ -1,63 +1,15 @@
 #ifndef APLCON_HPP
 #define APLCON_HPP
 
+// detail code is in namespace APLCON_ (note the underscore)
+#include "detail/APLCON_templates.hpp"
+
 #include <vector>
 #include <map>
 #include <functional>
-#include <limits>
 #include <stdexcept>
-#include <type_traits>
-#include <typeinfo>
-#include <iostream>
 #include <sstream>
 #include <algorithm>
-
-#ifdef __GNUG__
-#include <cstdlib>
-#include <memory>
-#include <cxxabi.h>
-
-std::string demangle(const char* name) {
-
-    int status = -4; // some arbitrary value to eliminate the compiler warning
-
-    // enable c++11 by passing the flag -std=c++11 to g++
-    std::unique_ptr<char, void(*)(void*)> res {
-        abi::__cxa_demangle(name, NULL, NULL, &status),
-        std::free
-    };
-
-    return (status==0) ? res.get() : name ;
-}
-
-#else
-
-// does nothing if not g++
-std::string demangle(const char* name) {
-    return name;
-}
-
-#endif
-
-
-
-template<bool R>
-struct make_vector_if {};
-
-template<>
-struct make_vector_if<true>  {
-  static std::vector<double> get(const double& v) {
-    return {v};
-  }
-};
-
-template<>
-struct make_vector_if<false>  {
-  static std::vector<double> get(const std::vector<double>& v) {
-    return v;
-  }
-};
-
 
 /**
  * @brief The APLCON class
@@ -85,7 +37,6 @@ public:
     LogNormal,
     SquareRoot
   };
-
 
   struct Limit_t {
     double Low;
@@ -119,7 +70,6 @@ public:
     T Before;
     T After;
   };
-
 
   struct Result_Variable_t {
     std::string Name;
@@ -162,7 +112,10 @@ public:
     fit_settings  = _fit_settings;
   }
 
-
+  /**
+   * @brief DoFit main routine
+   * @return the result of the fit, including much additional information
+   */
   Result_t DoFit();
 
   /**
@@ -225,9 +178,9 @@ public:
                      const std::vector<std::string>& varnames,
                      const Functor& constraint)
   {
-    CheckMapKey("Linked constraint", name, constraints);
+    CheckMapKey("Constraint", name, constraints);
 
-    using trait = function_traits<Functor>; // little shortcut
+    using trait = APLCON_::function_traits<Functor>; // little shortcut
 
     // non functors are kind of hard to bind later in bind_constraint,
     // so we forbid this here
@@ -256,11 +209,13 @@ public:
       throw std::logic_error(msg.str());
     }
 
-    // the flag wants_double selects the corresponding bind_constraint implementation
-    const auto& b = bind_constraint<returns_double>(std::enable_if<wants_double>(),
-                                                    constraint, build_indices<n>{});
+    // the flag wants_double and returns_double select the corresponding bind_constraint
+    // implementation
+    const auto& bound = bind_constraint<returns_double>
+        (std::enable_if<wants_double>(),
+         constraint, APLCON_::build_indices<n>{});
 
-    constraints[name] = {varnames, b};
+    constraints[name] = {varnames, bound, returns_double};
     initialized = false;
   }
 
@@ -273,21 +228,15 @@ public:
     const static int Width;
   };
 
-
 private:
-
-  enum class ConstraintType {
-    Simple, Complex
-  };
 
   struct constraint_t {
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
+    bool ReturnsDouble;
   };
 
-
   // values with starting values (works since map is ordered)
-  // TODO: merge variables and linked variables
   std::map<std::string, Variable_t> variables;
   int nVariables; // number of simple variables
   // off-diagonal covariances addressed by pairs of variable names
@@ -328,95 +277,6 @@ private:
   // shortcuts for double limits (used in default values for methods above)
   const static double NaN;
 
-  // some extra stuff for having a nice constraint interface using bind_constraint (see below!)
-
-  // get some function traits like return type and number of arguments
-  // based on https://functionalcpp.wordpress.com/2013/08/05/function-traits/
-
-  template<template<typename,typename>class checker, typename... Ts>
-  struct is_all : std::true_type {};
-
-  template<template<typename,typename>class checker, typename T0, typename T1, typename... Ts>
-  struct is_all<checker, T0, T1, Ts...> :
-      std::integral_constant< bool, checker<T0, T1>::value && is_all<checker, T0, Ts...>::value>
-  {};
-
-  // std::decay removes const and reference qualifiers
-  // which spoils the type comparison we actually want...
-  template<typename... Ts>
-  using is_all_same_decayed = is_all< std::is_same, typename std::decay<Ts>::type ... >;
-
-  // functor
-  template<class F>
-  struct function_traits
-  {
-  private:
-    using call_type = function_traits<decltype(&F::operator())>; // how to prevent the compiler message here for non-callable types?
-
-  public:
-    using return_type = typename call_type::return_type;
-
-    static constexpr std::size_t arity = call_type::arity;
-    static constexpr bool is_functor = true;
-
-    template <typename Compare>
-    struct all_args : call_type::template all_args<Compare> {};
-
-  };
-
-  template<class F>
-  struct function_traits<F&> : public function_traits<F> {};
-
-  template<class F>
-  struct function_traits<F&&> : public function_traits<F> {};
-
-  // anything else what is callable
-  template<typename R, typename... Args>
-  struct function_traits<R(Args...)>
-  {
-    using return_type = R;
-
-    static constexpr std::size_t arity = sizeof...(Args);
-    static constexpr bool is_functor = false;
-
-    template <typename Compare>
-    struct all_args : is_all_same_decayed<Args..., Compare> {};
-
-  };
-
-  // function pointer
-  template<typename R, typename... Args>
-  struct function_traits<R(*)(Args...)> : public function_traits<R(Args...)> {};
-
-  // member function pointer
-  // ignore C, which makes all_args actually work...
-  template<class C, class R, class... Args>
-  struct function_traits<R(C::*)(Args...)> : public function_traits<R(Args...)> {};
-
-  // const member function pointer
-  // ignore C, which makes all_args actually work...
-  template<class C, class R, class... Args>
-  struct function_traits<R(C::*)(Args...) const> : public function_traits<R(Args...)> {};
-
-  // member object pointer
-  template<class C, class R>
-  struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
-
-
-  // this little template fun is called "pack of indices"
-  // it enables the nice definition of constraints via AddConstraint(...) method
-  // see http://stackoverflow.com/questions/11044504/any-solution-to-unpack-a-vector-to-function-arguments-in-c
-  // and http://loungecpp.wikidot.com/tips-and-tricks%3aindices
-  template <std::size_t... Is>
-  struct indices {};
-
-  template <std::size_t N, std::size_t... Is>
-  struct build_indices : build_indices<N-1, N-1, Is...> {};
-
-  template <std::size_t... Is>
-  struct build_indices<0, Is...> : indices<Is...> {};
-
-
   // define the two different constraint binding functions
   // which are selected on compile-time via their first two arguments
 
@@ -433,16 +293,14 @@ private:
 
   using constraint_function_t = std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)>;
 
-  using constraint_function_scalar_t = std::function< double (const std::vector< std::vector<const double*> >&)>;
-
   template <bool R, typename F, size_t... I>
   constraint_function_t
   bind_constraint(std::enable_if<true>, // wants_double
-                  const F& f, indices<I...>) const {
+                  const F& f, APLCON_::indices<I...>) const {
     auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // dereference the single element inside the inner vector
       // return vector with single element
-      return make_vector_if<R>::get(f(*(x[I][0])...));
+      return APLCON_::vectorize_if<R>::get(f(*(x[I][0])...));
     };
     return std::bind(f_wrap, f, std::placeholders::_1);
   }
@@ -450,7 +308,7 @@ private:
   template <bool R, typename F, size_t... I>
   constraint_function_t
   bind_constraint(std::enable_if<false>, // wants vector
-                  const F& f, indices<I...>) const {
+                  const F& f, APLCON_::indices<I...>) const {
     auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // this might be a little bit inefficient,
       // since we need to allocate the space for the dereferenced double values
@@ -462,7 +320,7 @@ private:
                        [] (const double* v) { return *v; }
                        );
       }
-      return make_vector_if<R>::get(f(std::move(x_[I])...));
+      return APLCON_::vectorize_if<R>::get(f(std::move(x_[I])...));
     };
     return std::move(std::bind(f_wrap, f, std::placeholders::_1));
   }
@@ -472,21 +330,6 @@ private:
 
 
 // templated methods must be implemented in header file
-
-//template<typename T>
-//void APLCON::AddConstraint(const std::string& name,
-//                   const std::vector<std::string>& varnames,
-//                   const T& constraint)
-//{
-//  CheckMapKey("Constraint", name, constraints);
-//  auto f = make_function(constraint);
-//  const size_t n = count_arg<decltype(f)>::value;
-//  if(varnames.size() != n) {
-//    throw std::logic_error("Constraint function argument number does not match the number of varnames.");
-//  }
-//  constraints[name] = {varnames, bind_constraint(constraint, build_indices<n> {})};
-//  initialized = false;
-//}
 
 template<typename T>
 void APLCON::CheckMapKey(const std::string& tag, const std::string& name, std::map<std::string, T> c) {

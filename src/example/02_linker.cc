@@ -45,9 +45,9 @@ int main() {
   a.AddConstraint("3", {"BF_e"}, vector2scalar);
   a.AddConstraint("4", {"BF_e"}, vector2vector);
 
-  auto wrong = [] (const vector<double>& a, double b) -> vector<double> {
-    return  {a[0] - a[1] + b};
-  };
+//  auto wrong = [] (const vector<double>& a, double b) -> vector<double> {
+//    return  {a[0] - a[1] + b};
+//  };
 
   //a.AddConstraint("4", {"BF_e", "BF_tau"}, wrong);
 

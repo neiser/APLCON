@@ -1,5 +1,5 @@
-#ifndef __APLCON_wrapper_h__
-#define __APLCON_wrapper_h__
+#ifndef APLCON_wrapper_h
+#define APLCON_wrapper_h
 
 // main routines
 void c_aplcon_aplcon(const int NVAR, const int MCST);

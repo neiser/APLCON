@@ -7,6 +7,7 @@
 #include <utility>
 #include <sstream>
 #include <iomanip>
+#include <limits>
 
 
 extern "C" {
@@ -96,7 +97,7 @@ void APLCON::SetCovariance(const string &var1, const string &var2, const double 
   covariances.insert(make_pair(p1, cov));
 }
 
-void APLCON::LinkVariable(const string &name, const std::vector<double *> &values, const std::vector<double> &sigmas, const std::vector<APLCON::Variable_Settings_t> &settings) {
+void APLCON::LinkVariable(const string &name, const std::vector<double*> &values, const std::vector<double> &sigmas, const std::vector<APLCON::Variable_Settings_t> &settings) {
   CheckMapKey("Linked Variable", name, variables);
 
   const size_t n = values.size();
@@ -119,7 +120,7 @@ void APLCON::LinkVariable(const string &name, const std::vector<double *> &value
     var.Settings.resize(n, Variable_Settings_t::Default);
   }
   var.Values = values;
-  //linked_variables.insert(make_pair(name, std::move(v)));
+
   variables[name] = var;
 }
 
@@ -298,13 +299,13 @@ void APLCON::Init()
     for(const string& varname : c.VariableNames) {
       const auto& index = X_s2i.find(varname);
       if(index == X_s2i.end()) {
-        throw logic_error("Linked constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
+        throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
       }
       const size_t offset = index->second;
-      // we need the number of values in the linked variable
+      // we need the number of values in the variable
       const Variable_t& var = variables[varname];
       const size_t n = var.Values.size();
-      // build the vector of pointers to X_linked values
+      // build the vector of pointers to X values
       vector<const double*> p(n);
       for(size_t i=0; i<n; i++) {
         p[i] = &X[offset+i];

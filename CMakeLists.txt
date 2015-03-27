@@ -20,7 +20,14 @@ add_subdirectory(APLCON)
 
 include_directories(src)
 
-add_library(aplcon++ SHARED src/APLCON.cc src/wrapper/APLCON.f90 src/wrapper/APLCON.h)
+add_library(aplcon++ SHARED
+  src/APLCON.cc
+  src/wrapper/APLCON.f90
+  src/wrapper/APLCON.h
+  # add header files to show them in IDEs
+  src/APLCON.hpp
+  src/detail/APLCON_templates.hpp
+  )
 target_link_libraries(aplcon++ aplcon)
 
 # build some examples
