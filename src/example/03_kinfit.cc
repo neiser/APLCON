@@ -20,10 +20,10 @@ int main() {
   auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
   auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
 
-//  a.LinkVariable("Vec1_E", linker_E(vec1), vector{1});
-//  a.LinkVariable("Vec1_p", linker_p(vec1), vector{2});
-//  a.LinkVariable("Vec2_E", linker_E(vec2), {3});
-//  a.LinkVariable("Vec2_p", linker_p(vec2), {3});
+  a.LinkVariable("Vec1_E", linker_E(vec1), vector<double>{1});
+  a.LinkVariable("Vec1_p", linker_p(vec1), vector<double>{2});
+  a.LinkVariable("Vec2_E", linker_E(vec2), vector<double>{3});
+  a.LinkVariable("Vec2_p", linker_p(vec2), vector<double>{4});
 
   auto equal_energy = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
     return {a[0] - b[0]}; // might return more than one constraint
@@ -45,13 +45,11 @@ int main() {
       r[i] = a[i]-b[i];
     return r;
   };
-  vector_equal({},{});
-
 
   a.AddConstraint("equal_energy",    {"Vec1_E", "Vec2_E"}, equal_energy);
   a.AddConstraint("equal_momentum",  {"Vec1_p", "Vec2_p"}, equal_momentum_3);
 
-  a.DoFit();
+  cout << a.DoFit() << endl;
 
 
 //  auto scalar2scalar = [] (const double& a) -> double {

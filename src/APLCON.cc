@@ -18,7 +18,6 @@ extern "C" {
 #include <stdexcept>
 #include <utility>
 
-
 using namespace std;
 
 int APLCON::instance_counter = 0;
@@ -125,17 +124,12 @@ void APLCON::LinkVariable(const string &name,
                           const std::vector<double*>& values,
                           const std::vector<double>& sigmas,
                           const std::vector<APLCON::Variable_Settings_t> &settings) {
-  // internally stored sigmas
-  // be nice and offer to set sigma for all values to one single provided value
-  vector<double> sigmas_(1);
+  const size_t sigmas_size = sigmas.size()==1 ? values.size() : sigmas.size();
+  auto it = LinkVariable(name, values, sigmas_size, settings);
+  it->second.StoredSigmas = sigmas;
   if(sigmas.size()==1) {
-    sigmas_.resize(values.size(), sigmas[0]);
+    it->second.StoredSigmas.resize(sigmas_size, sigmas[0]);
   }
-  else {
-    sigmas_ = sigmas; // copy
-  }
-  auto it = LinkVariable(name, values, sigmas_.size(), settings);
-  it->second.StoredSigmas = sigmas_;
 }
 
 APLCON::variables_t::iterator APLCON::LinkVariable(

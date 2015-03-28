@@ -4,12 +4,12 @@
 // detail code is in namespace APLCON_ (note the underscore)
 #include "detail/APLCON_hpp.hpp"
 
-#include <vector>
-#include <map>
-#include <functional>
-#include <stdexcept>
-#include <sstream>
 #include <algorithm>
+#include <functional>
+#include <map>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
 
 /**
  * @brief The APLCON class
