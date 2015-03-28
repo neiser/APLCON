@@ -275,14 +275,19 @@ APLCON::Result_t APLCON::DoFit()
       }
       var.Name = s_name.str();
       var.Value = {*(before.Values[k]), X[i]};
-      *(before.Values[k]) = X[i];
 
       const size_t V_i = (i+1)*(i+2)/2-1;
       // pow/sqrt of covariance is actually the only calcution the wrapper does
       // the rest is done by APLCON...
       const double after_sigma = sqrt(V[V_i]);
       var.Sigma = {*(before.Sigmas[k]), after_sigma};
-      *(before.Sigmas[k]) = after_sigma;
+
+      // only copy stuff back if variable is not internally stored
+      // which is indicated by an empty store
+      if(before.StoredValues.empty())
+        *(before.Values[k]) = X[i];
+      if(before.StoredSigmas.empty())
+        *(before.Sigmas[k]) = after_sigma;
 
       // copy the covariances, respecting that V is symmetrized
       var.Covariances.Before.resize(X.size());
@@ -294,7 +299,6 @@ APLCON::Result_t APLCON::DoFit()
         var.Covariances.Before[j] = V_before[V_i];
         var.Covariances.After[j]  = V[V_i];
       }
-
       var.Pull = pulls[i];
       var.Settings = before.Settings[k];
 
