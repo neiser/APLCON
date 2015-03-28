@@ -24,24 +24,42 @@ using namespace std;
 int APLCON::instance_counter = 0;
 int APLCON::instance_lastfit = 0;
 
+// short NaN is really handy...
 const double APLCON::NaN = numeric_limits<double>::quiet_NaN();
+
 const APLCON::Variable_Settings_t APLCON::Variable_Settings_t::Default = {
   APLCON::Distribution_t::Gaussian,
   {
     -numeric_limits<double>::infinity(),
     numeric_limits<double>::infinity()
   },
-  numeric_limits<double>::quiet_NaN()
+  APLCON::NaN
 };
-// set in Init() method
+
+// transferred to APLCON in Init() method
 const APLCON::Fit_Settings_t APLCON::Fit_Settings_t::Default = {
-  0,  // no debug printout
-  -1, // default max iterations
-  numeric_limits<double>::quiet_NaN(),
-  numeric_limits<double>::quiet_NaN(),
-  numeric_limits<double>::quiet_NaN(),
-  numeric_limits<double>::quiet_NaN()
+  0,  // no debug printout from APLCON
+  -1, // max iterations
+  APLCON::NaN,
+  APLCON::NaN,
+  APLCON::NaN,
+  APLCON::NaN
 };
+
+// proper default result
+const APLCON::Result_t APLCON::Result_t::Default = {
+  "", // Name
+  APLCON::Result_Status_t::_Unknown,
+  APLCON::NaN,
+  -1,
+  APLCON::NaN,
+  -1,
+  -1,
+  {},
+  {}
+};
+
+// method implementations
 
 void APLCON::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
                                  const APLCON::Variable_Settings_t& settings)
@@ -209,36 +227,16 @@ APLCON::Result_t APLCON::DoFit()
   while(aplcon_ret<0);
 
   // now, after the loop, retrieve the results
-  Result_t result;
+  Result_t result = Result_t::Default;
 
-  // interpret status number according to README
-  bool converged = false;
-  switch (aplcon_ret) {
-  case 0:
-    result.Status = Result_Status_t::Success;
-    converged = true;
-    break;
-  case 1:
-    result.Status = Result_Status_t::NoConvergence;
-    break;
-  case 2:
-    result.Status = Result_Status_t::TooManyIterations;
-    break;
-  case 3:
-    result.Status = Result_Status_t::UnphysicalValues;
-    break;
-  case 4:
-    result.Status = Result_Status_t::NegativeDoF;
-    break;
-  case 5:
-    result.Status = Result_Status_t::OutOfMemory;
-    break;
-  default:
+  // make some evil static_cast, but it's way shorter than
+  if(aplcon_ret >= (int)Result_Status_t::_Unknown) {
     throw logic_error("Unkown return value after APLCON fit");
   }
+  result.Status = static_cast<Result_Status_t>(aplcon_ret);
 
   // return default result if not successful
-  if(!converged)
+  if(result.Status != Result_Status_t::Success)
     return result;
 
   // now retrieve everything from APLCON,
@@ -341,7 +339,7 @@ void APLCON::Init()
 
   // build the storage arrays for APLCON
 
-  // X are simpy the start values, but also track the
+  // X are simply the start values, but also track the
   // map of variables names to index in X (as offsets)
   // this is used to create the double pointer arrays
   // for the constraints later and also to unmap results of APLCON in DoFit

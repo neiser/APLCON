@@ -51,13 +51,15 @@ public:
     const static Variable_Settings_t Default;
   };
 
-  enum class Result_Status_t {
+  // the order must correspond to APLCON's status number (see APLCON README)
+  enum class Result_Status_t : int {
     Success,
     NoConvergence,
     TooManyIterations,
     UnphysicalValues,
     NegativeDoF,
-    OutOfMemory
+    OutOfMemory,
+    _Unknown // default in Result_t, also used to count items
   };
 
   template<typename T>

@@ -61,7 +61,7 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
     o << "OutOfMemory";
     break;
   default:
-    throw std::logic_error("Unkown Result_Status_t in ostream");
+    throw std::logic_error("Unknown Result_Status_t in ostream");
     break;
   }
 
