@@ -59,7 +59,7 @@ const APLCON::Result_t APLCON::Result_t::Default = {
   {}
 };
 
-// method implementations
+// simple AddVariable methods
 
 void APLCON::AddMeasuredVariable(const std::string &name, const double value, const double sigma,
                                  const APLCON::Variable_Settings_t& settings)
@@ -110,6 +110,8 @@ void APLCON::AddVariable(const string &name, const double value, const double si
   initialized = false;
 }
 
+// LinkVariable methods
+
 void APLCON::LinkVariable(const string &name,
                           const std::vector<double*> &values,
                           const std::vector<double*> &sigmas,
@@ -136,10 +138,12 @@ void APLCON::LinkVariable(const string &name,
   it->second.StoredSigmas = sigmas_;
 }
 
-APLCON::variables_t::iterator APLCON::LinkVariable(const string &name,
-                          const std::vector<double*>& values,
-                          const size_t sigmas_size,
-                          const std::vector<APLCON::Variable_Settings_t> &settings) {
+APLCON::variables_t::iterator APLCON::LinkVariable(
+    const string &name,
+    const std::vector<double*>& values,
+    const size_t sigmas_size,
+    const std::vector<APLCON::Variable_Settings_t> &settings
+    ) {
 
   CheckMapKey("Linked Variable", name, variables);
 
@@ -175,33 +179,63 @@ APLCON::variables_t::iterator APLCON::LinkVariable(const string &name,
   return p.first;
 }
 
-void APLCON::SetCovariance(const string &var1, const string &var2, const double cov)
+// SetCovariance methods
+
+
+void APLCON::SetCovariance(const std::string& var1,
+                           const std::string& var2,
+                           const double covariance) {
+
+}
+void APLCON::SetCovariance(const std::string& var1,
+                           const std::string& var2,
+                           const std::vector<double> covariance) {
+
+}
+
+void APLCON::SetCovariance(const std::string& var1,
+                           const std::string& var2,
+                           const std::vector<double*> covariance) {
+
+}
+
+APLCON::covariances_t::iterator APLCON::SetCovariance(
+    const string &var1,
+    const string &var2)
 {
   if(var1.empty() || var2.empty()) {
-    throw logic_error("Variable names cannot be empty strings");
+    throw logic_error("Covariance variable names cannot be empty strings");
   }
+  if(var1 == var2) {
+    throw logic_error("Covariance variable names must be different");
+  }
+
+
+
   // assume covariance is gonna changed
+  // so force Init to execute again
   initialized = false;
 
   // search the covariances map
   // but note that the pairs are symmetric (since the covariance matrix is)
+  // so we search for both possibilities
+  // if we find it, we update it...
   const pair<string, string>& p1 = make_pair(var1, var2);
   const pair<string, string>& p2 = make_pair(var2, var1);
   auto it1 = covariances.find(p1);
   if(it1 != covariances.end()) {
-    //it1->second = cov;
-    return;
+    return it1;
   }
   auto it2 = covariances.find(p2);
   if(it2 != covariances.end()) {
-    //it2->second = cov;
-    return;
+    return it2;
   }
-  // not found, then add it
-  //covariances.insert(make_pair(p1, cov));
+  // not found, then add default struct and return
+  auto p = covariances.insert(make_pair(p1, covariance_t()));
+  return p.first;
 }
 
-
+// Main Fit Routines
 
 APLCON::Result_t APLCON::DoFit()
 {
@@ -500,8 +534,3 @@ void APLCON::Init()
   initialized = true;
   instance_lastfit = instance_id;
 }
-
-
-
-// finally the ostream implementation for nice (debug) printout
-

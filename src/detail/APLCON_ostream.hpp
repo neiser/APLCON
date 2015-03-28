@@ -11,9 +11,10 @@
 #include <vector>
 
 
-const std::string APLCON::PrintFormatting::Indent = "   ";
-const std::string APLCON::PrintFormatting::Marker = ">> ";
-const int APLCON::PrintFormatting::Width = 13;
+// some defaults for PrintFormatting
+std::string APLCON::PrintFormatting::Indent = "   ";
+std::string APLCON::PrintFormatting::Marker = ">> ";
+int APLCON::PrintFormatting::Width = 13;
 
 std::ostream& operator<< (std::ostream& o, const APLCON::Limit_t& l) {
   return o << "(" << l.Low << ", " << l.High << ")";

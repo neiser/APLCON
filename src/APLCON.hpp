@@ -160,7 +160,7 @@ public:
       );
 
 
-  void SetCovariance(const std::string& var1, const std::string& var2, const double cov);
+
 
 
   void LinkVariable(const std::string& name,
@@ -173,6 +173,13 @@ public:
                     const std::vector<double>&  sigmas,
                     const std::vector<Variable_Settings_t>& settings = {}
       );
+
+  void SetCovariance(const std::string& var1, const std::string& var2,
+                     const double covariance);
+  void SetCovariance(const std::string& var1, const std::string& var2,
+                     const std::vector<double> covariance);
+  void SetCovariance(const std::string& var1, const std::string& var2,
+                     const std::vector<double*> covariance);
 
 
   /**
@@ -231,10 +238,11 @@ public:
 
   // some printout formatting stuff
   // used in overloaded << operators
+  // may be changed to tune print formatting
   struct PrintFormatting {
-    const static std::string Indent;
-    const static std::string Marker;
-    const static int Width;
+    static std::string Indent;
+    static std::string Marker;
+    static int Width;
   };
 
 private:
@@ -254,25 +262,26 @@ private:
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
     bool WantsDouble; // true if Function takes single double as all arguments (set by AddConstraint)
-    size_t Number;  // number of represented scalar constraints, set by Init
+    size_t Number;    // number of represented scalar constraints, set by Init
   };
 
   // since a variable can represent multiple values
   // we need to store a little symmetric submatrix as a vector (as V) here
-  // since we can link values via pointers, it's similar to Variable_t
+  // since we can link values via pointers, it's designed similar to Variable_t
   struct covariance_t {
     std::vector<double*> Values;
     std::vector<double>  StoredValues;
-    size_t VOffset1; // offset in V in row direction for first variable
-    size_t VOffset2;
+    size_t VOffset1; // offset in V in row direction for first  variable
+    size_t VOffset2; // offset in V in row direction for second variable
   };
 
   // values with starting values (works since map is ordered)
   typedef std::map<std::string, variable_t> variables_t;
-  std::map<std::string, variable_t> variables;
+  variables_t variables;
   int nVariables; // number of simple variables
   // off-diagonal covariances addressed by pairs of variable names
-  std::map< std::pair<std::string, std::string>, covariance_t > covariances;
+  typedef std::map< std::pair<std::string, std::string>, covariance_t > covariances_t;
+  covariances_t covariances;
   // the constraints
   // a constraint has a list of variable names and
   // a corresponding "vectorized" function evaluated on pointers to double
@@ -305,10 +314,15 @@ private:
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const APLCON::Variable_Settings_t& settings);
 
-  variables_t::iterator LinkVariable(const std::string& name,
-                    const std::vector<double*>& values,
-                    const size_t sigma_size,
-                    const std::vector<Variable_Settings_t>& settings
+  variables_t::iterator LinkVariable(
+      const std::string& name,
+      const std::vector<double*>& values,
+      const size_t sigma_size,
+      const std::vector<Variable_Settings_t>& settings
+      );
+
+  covariances_t::iterator SetCovariance(
+      const std::string& var1, const std::string& var2
       );
 
   template<typename T>
