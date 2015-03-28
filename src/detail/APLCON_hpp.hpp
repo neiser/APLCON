@@ -1,5 +1,5 @@
-#ifndef APLCON_TEMPLATES_HPP
-#define APLCON_TEMPLATES_HPP
+#ifndef _APLCON_APLCON_HPP_HPP
+#define _APLCON_APLCON_HPP_HPP 1
 
 #include <type_traits>
 #include <vector>
@@ -7,24 +7,6 @@
 #include <algorithm>
 
 namespace APLCON_ {
-
-// some little helper functions
-
-template<typename T>
-T* make_pointer(T& t) {
-  return &t;
-}
-
-template <typename T>
-void copy_pointers(std::vector<T>& source, std::vector<T*>& target)
-{
-  if(source.size()==0)
-    return;
-  target.resize(source.size());
-  std::transform(source.begin(), source.end(), target.begin(), make_pointer<T>);
-}
-
-
 
 // vectorize by template, that means wrap double value around initializer list {}
 

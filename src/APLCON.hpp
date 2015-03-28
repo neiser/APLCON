@@ -1,8 +1,8 @@
-#ifndef APLCON_HPP
-#define APLCON_HPP
+#ifndef _APLCON_APLCON_HPP
+#define _APLCON_APLCON_HPP 1
 
 // detail code is in namespace APLCON_ (note the underscore)
-#include "detail/APLCON_templates.hpp"
+#include "detail/APLCON_hpp.hpp"
 
 #include <vector>
 #include <map>
@@ -17,6 +17,7 @@
  * V.Blobel's FORTRAN APLCON constrained least squares fitter
  * see http://www.desy.de/~blobel/wwwcondl.html for details of the original FORTRAN code
  */
+
 class APLCON
 {
 public:

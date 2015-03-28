@@ -26,7 +26,8 @@ add_library(aplcon++ SHARED
   src/wrapper/APLCON.h
   # add header files to show them in IDEs
   src/APLCON.hpp
-  src/detail/APLCON_templates.hpp
+  src/detail/APLCON_hpp.hpp
+  src/detail/APLCON_cc.hpp
   )
 target_link_libraries(aplcon++ aplcon)
 

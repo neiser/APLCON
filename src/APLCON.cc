@@ -1,5 +1,13 @@
 #include "APLCON.hpp"
 
+// detail code is in namespace APLCON_ (note the underscore)
+#include "detail/APLCON_cc.hpp"
+
+// include the wrapping C functions
+extern "C" {
+#include "wrapper/APLCON.h"
+}
+
 #include <stdexcept>
 #include <cmath>
 #include <iostream>
@@ -8,11 +16,6 @@
 #include <sstream>
 #include <iomanip>
 #include <limits>
-
-
-extern "C" {
-#include "wrapper/APLCON.h"
-}
 
 using namespace std;
 
