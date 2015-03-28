@@ -229,8 +229,8 @@ APLCON::Result_t APLCON::DoFit()
   // now, after the loop, retrieve the results
   Result_t result = Result_t::Default;
 
-  // make some evil static_cast, but it's way shorter than
-  if(aplcon_ret >= (int)Result_Status_t::_Unknown) {
+  // make some evil static_cast, but it's way shorter than switch statement
+  if(aplcon_ret >= static_cast<int>(Result_Status_t::_Unknown)) {
     throw logic_error("Unkown return value after APLCON fit");
   }
   result.Status = static_cast<Result_Status_t>(aplcon_ret);
