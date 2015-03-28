@@ -11,21 +11,29 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-# those flags (from original Makefile) are crucial to make the program run properly
-# otherwise you end up in an endless loop
+# add test program if built standalone
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+  set(STANDALONE YES)
+endif()
+
+# those flags (from original Makefile)
+# are crucial to make the program run properly
+# otherwise you end up in an endless loop...
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fno-automatic -fno-backslash")
-# suppress warnings in release mode
-set(CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG} -O0 -Wall -Wextra")
-set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -w")
 
-string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
-set(DEFAULT_Fortran_COMPILE_FLAGS ${CMAKE_Fortran_FLAGS_${BUILD_TYPE}})
+# add test program if built standalone
+if(STANDALONE)
+  # enable all the many warnings of APLCON
+  set(CMAKE_Fortran_FLAGS_DEBUG  "${CMAKE_Fortran_FLAGS_DEBUG} -O0 -Wall -Wextra")
+  # but suppress warnings in release mode (just not to confuse people)
+  set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -w")
+  string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
+  set(DEFAULT_Fortran_COMPILE_FLAGS ${CMAKE_Fortran_FLAGS_${BUILD_TYPE}})
+  message(STATUS "*** Build Type:      " ${CMAKE_BUILD_TYPE})
+  message(STATUS "*** Compiler Flags:  " ${DEFAULT_Fortran_COMPILE_FLAGS})
+endif()
 
-message(STATUS "*** APLCON Build Type:      " ${CMAKE_BUILD_TYPE})
-message(STATUS "*** APLCON Compiler Flags:  " ${DEFAULT_Fortran_COMPILE_FLAGS})
-
-
-# build the library (static)
+# build the library
 set(SRCS_LIB
   a12prof.F
   aplist.F
@@ -37,11 +45,12 @@ set(SRCS_LIB
   dcsplines.F
   fpl.F
   )
+
 add_library(aplcon SHARED ${SRCS_LIB})
 
-# add test program if built standalone
-if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-  # link the test program against it
+# build APLCON's test prgram only in standalone
+if(STANDALONE)
+  # link the test program against the Fortran library
   set(SRCS_TEST
     test/avlass.F
     test/avvsys.F
