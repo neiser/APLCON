@@ -340,6 +340,22 @@ APLCON::Result_t APLCON::DoFit()
         var.Covariances.Before[j] = V_before[V_ij];
         var.Covariances.After[j]  = V[V_ij];
       }
+
+      // calculate the correlations (after building the full covariance matrix),
+      // because APLCON does not provide them (only print methods available)
+      var.Correlations.Before.resize(X.size());
+      var.Correlations.After.resize(X.size());
+      for(size_t j=0; j<X.size(); j++) {
+        const size_t V_ij = APLCON_::V_ij(i,j);
+        const size_t V_ii = APLCON_::V_ij(i,i);
+        const size_t V_jj = APLCON_::V_ij(j,j);
+        const double prod_before = V_before[V_ii] * V_before[V_jj];
+        const double prod = V[V_ii] * V[V_jj];
+        var.Correlations.Before[j] = V_before[V_ij]/sqrt(prod_before);
+        var.Correlations.After[j]  = V[V_ij]/sqrt(prod);
+      }
+
+      // anything else
       var.Pull = pulls[i];
       var.Settings = before.Settings[k];
 
@@ -347,6 +363,8 @@ APLCON::Result_t APLCON::DoFit()
       result.Variables.push_back(move(var));
     }
   }
+
+
 
   // copy just the names of the constraints
   result.Constraints.reserve(constraints.size());

@@ -73,6 +73,7 @@ public:
     Result_BeforeAfter_t<double> Value;
     Result_BeforeAfter_t<double> Sigma;
     Result_BeforeAfter_t< std::vector<double> > Covariances;
+    Result_BeforeAfter_t< std::vector<double> > Correlations;
     double Pull;
     Variable_Settings_t Settings;
   };

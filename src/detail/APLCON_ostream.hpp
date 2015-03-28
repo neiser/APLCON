@@ -70,13 +70,12 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
 }
 
 template<typename F>
-std::string stringify_contraints(const std::vector<APLCON::Result_Variable_t>& variables,
+std::string stringify_covariances(const std::vector<APLCON::Result_Variable_t>& variables,
                                  const std::string& in,
                                  F f) {
   const int w = APLCON::PrintFormatting::Width;
-  const int w_varname = APLCON::PrintFormatting::Width; //
+  const int w_varname = APLCON::PrintFormatting::Width;
   std::stringstream o;
-  o << in << "Covariances: " << std::endl;
   o << in << std::setw(w_varname) << " ";
   for(size_t i=0;i<variables.size();i++) {
     std::stringstream i_;
@@ -133,7 +132,11 @@ std::string stringify_variables(const std::vector<APLCON::Result_Variable_t>& va
   }
   o << std::endl;
 
-  o << stringify_contraints(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
+  o << in << "Covariances: " << std::endl;
+  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
+
+  o << in << "Correlations: " << std::endl;
+  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;});
 
   // print stuff after the fit
   o << ma << "After Fit:" << std::endl << std::endl;
@@ -153,7 +156,11 @@ std::string stringify_variables(const std::vector<APLCON::Result_Variable_t>& va
   }
   o << std::endl;
 
-  o << stringify_contraints(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
+  o << in << "Covariances: " << std::endl;
+  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
+
+  o << in << "Correlations: " << std::endl;
+  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;});
 
   return o.str();
 
