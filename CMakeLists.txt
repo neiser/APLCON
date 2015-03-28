@@ -11,10 +11,9 @@ endif()
 
 include (cmake/settings.cmake)
 
-message(STATUS "*** Build Type:      " ${CMAKE_BUILD_TYPE})
-message(STATUS "*** Compiler Flags:  " ${DEFAULT_COMPILE_FLAGS})
-message(STATUS "*** Install libs to: " ${LIBRARY_OUTPUT_PATH})
-message(STATUS "*** Install bin to:  " ${EXECUTABLE_OUTPUT_PATH})
+message(STATUS "*** Build Type:                " ${CMAKE_BUILD_TYPE})
+message(STATUS "*** Compiler Flags (CXX):      " ${DEFAULT_CXX_COMPILE_FLAGS})
+message(STATUS "*** Compiler Flags (Fortran):  " ${DEFAULT_Fortran_COMPILE_FLAGS})
 
 add_subdirectory(APLCON)
 
