@@ -20,10 +20,10 @@ int main() {
   auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
   auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
 
-  //a.LinkVariable("Vec1_E", linker_E(vec1), {1});
- // a.LinkVariable("Vec1_p", linker_p(vec1), {2});
-  //a.LinkVariable("Vec2_E", linker_E(vec2), {3});
-  //a.LinkVariable("Vec2_p", linker_p(vec2), {3});
+//  a.LinkVariable("Vec1_E", linker_E(vec1), vector{1});
+//  a.LinkVariable("Vec1_p", linker_p(vec1), vector{2});
+//  a.LinkVariable("Vec2_E", linker_E(vec2), {3});
+//  a.LinkVariable("Vec2_p", linker_p(vec2), {3});
 
   auto equal_energy = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
     return {a[0] - b[0]}; // might return more than one constraint

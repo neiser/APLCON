@@ -177,9 +177,9 @@ public:
   void SetCovariance(const std::string& var1, const std::string& var2,
                      const double covariance);
   void SetCovariance(const std::string& var1, const std::string& var2,
-                     const std::vector<double> covariance);
+                     const std::vector<double>& covariance);
   void SetCovariance(const std::string& var1, const std::string& var2,
-                     const std::vector<double*> covariance);
+                     const std::vector<double*>& covariance);
 
 
   /**
@@ -321,7 +321,7 @@ private:
       const std::vector<Variable_Settings_t>& settings
       );
 
-  covariances_t::iterator SetCovariance(
+  covariances_t::iterator MakeCovarianceEntry(
       const std::string& var1, const std::string& var2
       );
 

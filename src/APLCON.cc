@@ -152,10 +152,11 @@ APLCON::variables_t::iterator APLCON::LinkVariable(
     throw std::logic_error("At least one value should be linked");
   }
 
-  variable_t var;
   if(sigmas_size != n) {
     throw std::logic_error("Sigmas size does not match number of provided values");
   }
+
+  variable_t var;
 
   // check settings, set to defaults if none given
   if(settings.size() == 0) {
@@ -181,36 +182,47 @@ APLCON::variables_t::iterator APLCON::LinkVariable(
 
 // SetCovariance methods
 
-
+// assume var1 and var2 are both scalar
 void APLCON::SetCovariance(const std::string& var1,
                            const std::string& var2,
                            const double covariance) {
 
+  if(var1 == var2) {
+    throw logic_error("Covariance variable names must be different");
+  }
+  auto it = MakeCovarianceEntry(var1, var2);
+  it->second.StoredValues.push_back(covariance);
 }
 void APLCON::SetCovariance(const std::string& var1,
                            const std::string& var2,
-                           const std::vector<double> covariance) {
-
+                           const std::vector<double>& covariance) {
+  auto it = MakeCovarianceEntry(var1, var2);
+  if(covariance.empty()) {
+    throw logic_error("Empty covariance values given");
+  }
+  it->second.StoredValues = covariance;
 }
 
 void APLCON::SetCovariance(const std::string& var1,
                            const std::string& var2,
-                           const std::vector<double*> covariance) {
-
+                           const std::vector<double*>& covariance) {
+  auto it = MakeCovarianceEntry(var1, var2);
+  if(covariance.empty()) {
+    throw logic_error("Empty covariance pointers given");
+  }
+  it->second.Values = covariance;
 }
 
-APLCON::covariances_t::iterator APLCON::SetCovariance(
+APLCON::covariances_t::iterator APLCON::MakeCovarianceEntry(
     const string &var1,
     const string &var2)
 {
   if(var1.empty() || var2.empty()) {
     throw logic_error("Covariance variable names cannot be empty strings");
   }
-  if(var1 == var2) {
-    throw logic_error("Covariance variable names must be different");
-  }
-
-
+  // we cannot check in general if the variables should have different names
+  // since for vector variables, there are still correlations possible
+  // finally, this will be checked by Init
 
   // assume covariance is gonna changed
   // so force Init to execute again
@@ -221,15 +233,16 @@ APLCON::covariances_t::iterator APLCON::SetCovariance(
   // so we search for both possibilities
   // if we find it, we update it...
   const pair<string, string>& p1 = make_pair(var1, var2);
-  const pair<string, string>& p2 = make_pair(var2, var1);
   auto it1 = covariances.find(p1);
   if(it1 != covariances.end()) {
     return it1;
   }
+  const pair<string, string>& p2 = make_pair(var2, var1);
   auto it2 = covariances.find(p2);
   if(it2 != covariances.end()) {
     return it2;
   }
+
   // not found, then add default struct and return
   auto p = covariances.insert(make_pair(p1, covariance_t()));
   return p.first;
@@ -294,9 +307,9 @@ APLCON::Result_t APLCON::DoFit()
   // which makes debug output from  APLCON comparable to dumps of this structure
   result.Variables.reserve(X.size());
 
-  for(const auto& it_var : variables) {
-    const string& name = it_var.first;
-    const variable_t& before = it_var.second;
+  for(const auto& it_map : variables) {
+    const string& name = it_map.first;
+    const variable_t& before = it_map.second;
 
     for(size_t k=0;k<before.Values.size();k++) {
       size_t i = before.XOffset+k;
@@ -386,8 +399,8 @@ void APLCON::Init()
   V.clear();
   X.reserve(2*variables.size()); // best guess, nVariables will be known later
   V.reserve((X.size() << 1)/2); // another estimate for V's size N^2/2 =~ N*(N+1)/2
-  for(auto& it_var : variables) {
-    variable_t& var = it_var.second;
+  for(auto& it_map : variables) {
+    variable_t& var = it_map.second;
     size_t offset = X.size();
     var.XOffset = offset;
 
@@ -420,21 +433,21 @@ void APLCON::Init()
   nConstraints = 0;
   F_func.clear();
   F_func.reserve(constraints.size());
-  for(auto& c_map : constraints) {
+  for(auto& it_map : constraints) {
     // build the vector of double pointers
-    constraint_t& constraint = c_map.second;
+    constraint_t& constraint = it_map.second;
     vector< vector<const double*> > args;
     args.reserve(constraint.VariableNames.size()); // args usually smaller, but probably not larger (but not excluded)
     for(const string& varname : constraint.VariableNames) {
-      const auto& index = variables.find(varname);
-      if(index == variables.end()) {
-        throw logic_error("Constraint '"+c_map.first+"' refers to unknown variable '"+varname+"'");
+      const auto& it = variables.find(varname);
+      if(it == variables.end()) {
+        throw logic_error("Constraint '"+it_map.first+"' refers to unknown variable '"+varname+"'");
       }
-      const variable_t& var = index->second;
+      const variable_t& var = it->second;
       // check if constraint fits to variables
       if(constraint.WantsDouble && var.Values.size()>1) {
         stringstream msg;
-        msg << "Constraint '" << c_map.first << "' wants only single double arguments, "
+        msg << "Constraint '" << it_map.first << "' wants only single double arguments, "
             << "but '" << varname << "' consists of " << var.Values.size() << " (i.e. more than 1) values.";
         throw logic_error(msg.str());
       }
@@ -456,28 +469,61 @@ void APLCON::Init()
   }
   F.resize(nConstraints);
 
-  //  // V filled with off-diagonal elements from covariances
-  //  for(const auto& c_map : covariances) {
-  //    const pair<string, string>& vars = c_map.first;
-  //    auto i1 = X_s2i.find(vars.first);
-  //    if(i1 == X_s2i.end()) {
-  //      throw logic_error("Covariance variable '"+vars.first+"' not found");
-  //    }
-  //    auto i2 = X_s2i.find(vars.second);
-  //    if(i2 == X_s2i.end()) {
-  //      throw logic_error("Covariance variable '"+vars.second+"' not found");
-  //    }
-  //    if(i1==i2) {
-  //      throw logic_error("Use variable's Sigma field to define uncertainties.");
-  //    }
-  //    int i = i1->second;
-  //    int j = i2->second;
-  //    if(i>j) {
-  //      swap(i,j);
-  //    }
-  //    const size_t V_offset = j*(j+1)/2;
-  //    V[V_offset+i] = c_map.second;
-  //  }
+  // V filled with off-diagonal elements from covariances
+  // the variables already have their Values pointer correctly filled,
+  // so it's size can be used for the variables's dimensionality
+  // V is composed of submatrices due to the different dimensionality.
+  // We use V_* for indices concerning the full matrix,
+  //    and v_* for indices concerning the submatrices
+  for(auto& it_map : covariances) {
+    const pair<string, string>& varnames = it_map.first;
+    covariance_t& cov = it_map.second;
+
+
+    // create the pointers for internally stored covariances
+    APLCON_::copy_pointers(cov.StoredValues, cov.Values);
+
+    const string& cov_name = "<'"+varnames.first+"','"+varnames.second+"'>";
+
+    // the covariance setup differs if diagonal or
+    // off-diagonal submatrix is addressed
+
+    if(varnames.first == varnames.second) {
+      // varnames are equal, only one search required
+      auto it = variables.find(varnames.first);
+      if(it == variables.end()) {
+        throw logic_error("Variable name '"+varnames.first+"' for covariance "+cov_name+" not defined");
+      }
+      const variable_t& var = it->second;
+      const size_t n = var.Values.size();
+      if(var.Values.size()==1) {
+        throw logic_error("Use sigma to define uncertainty of scalar covariance "+cov_name);
+      }
+      const size_t v_n = n*(n-1); // expected size of the submatrix without diagonal elements
+      if(v_n != cov.Values.size()) {
+        stringstream msg;
+        msg << "Covariance " << cov_name << " provides " << cov.Values.size()
+            << " elements, but " << v_n << " needed according to variable dimensions";
+        throw logic_error(msg.str());
+      }
+    }
+    else {
+      // varnames are different, search them both
+      auto it1 = variables.find(varnames.first);
+      if(it1 == variables.end()) {
+        throw logic_error("First variable name '"+varnames.first+"' for covariance "+cov_name+" not defined");
+      }
+
+      auto it2 = variables.find(varnames.second);
+      if(it2 == variables.end()) {
+        throw logic_error("Second variable name '"+varnames.second+"' for covariance "+cov_name+" not defined");
+      }
+      const variable_t& var1 = it1->second;
+      const variable_t& var2 = it2->second;
+    }
+
+
+  }
 
   // finally we know the number of variables and constraints
   // so we can setup APLCON itself
