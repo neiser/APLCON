@@ -74,7 +74,7 @@ std::string stringify_contraints(const std::vector<APLCON::Result_Variable_t>& v
                                  const std::string& in,
                                  F f) {
   const int w = APLCON::PrintFormatting::Width;
-  const int w_varname = APLCON::PrintFormatting::Width+5;
+  const int w_varname = APLCON::PrintFormatting::Width;
   std::stringstream o;
   o << in << "Covariances: " << std::endl;
   o << in << std::setw(w_varname) << " ";
@@ -87,8 +87,9 @@ std::string stringify_contraints(const std::vector<APLCON::Result_Variable_t>& v
   for(size_t i=0;i<variables.size();i++) {
     const APLCON::Result_Variable_t& v = variables[i];
     std::stringstream i_;
-    i_ << "(" << i << ") ";
-    o << in << std::setw(4) << i_.str() << " " << std::setw(w_varname-5) << v.Name;
+    i_ << i << ") ";
+    o << in << std::setw(3) << i_.str()
+      << std::left << std::setw(w_varname-3) << v.Name << std::right;
     const std::vector<double>& cov = f(v);
     for(size_t j=0;j<cov.size();j++) {
       o << std::setw(w) << cov[j];
