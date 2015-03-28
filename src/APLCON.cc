@@ -185,7 +185,9 @@ void APLCON::SetCovariance(const std::string& var1,
     throw logic_error("Covariance variable names must be different");
   }
   auto it = MakeCovarianceEntry(var1, var2);
-  it->second.StoredValues.push_back(covariance);
+  auto& values = it->second.StoredValues;
+  values.resize(1);
+  values.back() = covariance;
 }
 void APLCON::SetCovariance(const std::string& var1,
                            const std::string& var2,
@@ -317,9 +319,9 @@ APLCON::Result_t APLCON::DoFit()
       var.Name = s_name.str();
       var.Value = {*(before.Values[k]), X[i]};
 
-      const size_t V_i = (i+1)*(i+2)/2-1;
       // pow/sqrt of covariance is actually the only calcution the wrapper does
       // the rest is done by APLCON...
+      const size_t V_i = APLCON_::V_ij(i,i);
       const double after_sigma = sqrt(V[V_i]);
       var.Sigma = {*(before.Sigmas[k]), after_sigma};
 
@@ -334,11 +336,9 @@ APLCON::Result_t APLCON::DoFit()
       var.Covariances.Before.resize(X.size());
       var.Covariances.After.resize(X.size());
       for(size_t j=0; j<X.size(); j++) {
-        const size_t i_ = i<j ? i : j;
-        const size_t j_ = i>j ? i : j;
-        const size_t V_i = j_*(j_+1)/2 + i_;
-        var.Covariances.Before[j] = V_before[V_i];
-        var.Covariances.After[j]  = V[V_i];
+        const size_t V_ij = APLCON_::V_ij(i,j);
+        var.Covariances.Before[j] = V_before[V_ij];
+        var.Covariances.After[j]  = V[V_ij];
       }
       var.Pull = pulls[i];
       var.Settings = before.Settings[k];
@@ -363,26 +363,39 @@ APLCON::Result_t APLCON::DoFit()
 
 void APLCON::Init()
 {
+  // check if we can do some quick init
   if(initialized && instance_id == instance_lastfit) {
     // reset APLCON for next fit
     c_aplcon_aplcon(nVariables, nConstraints);
 
-    // copy again the linked variables to X,
-    for(auto& it_var : variables) {
-      const variable_t& var = it_var.second;
-      auto X_offset = X.begin() + var.XOffset;
-      auto dereference = [] (double* d) {return *d;};
-      transform(var.Values.begin(),var.Values.end(), X_offset, dereference);
-    }
-
-    // TODO: and sigmas to diagonal V after original V_before?
+    // reset the covariance matrix
     V = V_before;
 
+    // copy again the linked variables to X
+    //
+    for(const auto& it_map : variables) {
+      const variable_t& var = it_map.second;
+      auto X_offset = X.begin() + var.XOffset;
+      auto dereference = [] (const double* d) {return *d;};
+      transform(var.Values.begin(), var.Values.end(), X_offset, dereference);
+      // copy the sigmas to diagonal of V
+      APLCON_::transform_to_V(V, var.Sigmas, var.V_ij,
+                              [] (double d) {return pow(d,2);});
+    }
+
+    // copy again the true non-diagonal covariances
+    // the distinction between sigmas and covariances makes the interface hopefully more usable,
+    // because always specifying covariances is tedious, but sigmas are crucial
+    // for measured variables or, say, constrained fitting
+    for(const auto& it_map : covariances) {
+      const auto& cov = it_map.second;
+      APLCON_::transform_to_V(V, cov.Values, cov.V_ij);
+    }
     return;
   }
 
 
-  // build the storage arrays for APLCON
+  // build the storage arrays X, V, F for APLCON
 
   // X are simply the start values, but also track the
   // map of variables names to index in X (as offsets)
@@ -407,15 +420,18 @@ void APLCON::Init()
     // now, externally linked variables and internally stored can
     // be treated equally
     nVariables += var.Values.size();
+    var.V_ij.resize(var.Values.size());
     for(size_t i=0;i<var.Values.size();i++) {
       X.push_back(*(var.Values[i])); // copy initial X values
 
-      // take care of diagonal elements in V
-      // set off diagonal to zero
+      // take care of diagonal elements in V,
+      // off diagonal elements are set to zero by resize (see also covariance handling later)
+      // this is like a push_back but with some padding in between
       const size_t j = offset+i;
-      const size_t V_j = (j+1)*(j+2)/2-1;
-      V.resize(V_j+1, 0);
-      V[V_j] = pow(*(var.Sigmas[i]),2);
+      const size_t V_ij = APLCON_::V_ij(j,j);
+      var.V_ij[i] = V_ij; // store for later
+      V.resize(V_ij+1, 0);
+      V.back() = pow(*(var.Sigmas[i]),2);
     }
   }
 
@@ -466,21 +482,18 @@ void APLCON::Init()
   // V filled with off-diagonal elements from covariances
   // the variables already have their Values pointer correctly filled,
   // so it's size can be used for the variables's dimensionality
-  // V is composed of submatrices due to the different dimensionality.
-  // We use V_* for indices concerning the full matrix,
-  //    and v_* for indices concerning the submatrices
+  // V is composed of submatrices due to this different dimensionality.
   for(auto& it_map : covariances) {
     const pair<string, string>& varnames = it_map.first;
     covariance_t& cov = it_map.second;
-
 
     // create the pointers for internally stored covariances
     APLCON_::copy_pointers(cov.StoredValues, cov.Values);
 
     const string& cov_name = "<'"+varnames.first+"','"+varnames.second+"'>";
 
-    // the covariance setup differs if diagonal or
-    // off-diagonal submatrix is addressed
+    // the setup of the index mapping filed V_ij in constraint_t
+    // differs strongly for off-diagonal vs. diagonal covariance elements
 
     if(varnames.first == varnames.second) {
       // varnames are equal, only one search required
@@ -493,12 +506,21 @@ void APLCON::Init()
       if(var.Values.size()==1) {
         throw logic_error("Use sigma to define uncertainty of scalar covariance "+cov_name);
       }
-      const size_t v_n = n*(n-1); // expected size of the submatrix without diagonal elements
+      const size_t v_n = n*(n-1)/2; // expected size of the submatrix without diagonal elements
+
       if(v_n != cov.Values.size()) {
         stringstream msg;
         msg << "Covariance " << cov_name << " provides " << cov.Values.size()
-            << " elements, but " << v_n << " needed according to variable dimensions";
+            << " element" << (cov.Values.size()==1?"":"s") << ", but " << v_n << " covariances needed with"
+            << " variable dimensions <" << n << "," << n << ">";
         throw logic_error(msg.str());
+      }
+
+      cov.V_ij.reserve(cov.Values.size());
+      for(size_t i=0;i<n;i++) {
+        for(size_t j=0;j<i;j++) {
+          cov.V_ij.push_back(APLCON_::V_ij(i+var.XOffset,j+var.XOffset));
+        }
       }
     }
     else {
@@ -514,13 +536,35 @@ void APLCON::Init()
       }
       const variable_t& var1 = it1->second;
       const variable_t& var2 = it2->second;
+      const size_t n1 = var1.Values.size();
+      const size_t n2 = var2.Values.size();
+      const size_t v_n = n1*n2; // expected size of the submatrix, there are no di
+
+      if(v_n != cov.Values.size()) {
+        stringstream msg;
+        msg << "Covariance " << cov_name << " provides " << cov.Values.size()
+            << " element" << (cov.Values.size()==1?"":"s") << ", but " << v_n << " covariances needed with"
+            << " variable dimensions <" << n1 << "," << n2 << ">";
+        throw logic_error(msg.str());
+      }
+      // var1 refers to rows, var2 to columns (standard mathematics convention)
+      cov.V_ij.reserve(cov.Values.size());
+      for(size_t i=0;i<n1;i++) {
+        for(size_t j=0;j<n2;j++) {
+          cov.V_ij.push_back(APLCON_::V_ij(i+var1.XOffset,j+var2.XOffset));
+        }
+      }
     }
 
+    // now, with some properly initialized cov.V_ij for each case,
+    // we can fill the non-diagonal values of V
+    APLCON_::transform_to_V(V, cov.Values, cov.V_ij);
 
   }
 
   // finally we know the number of variables and constraints
   // so we can setup APLCON itself
+
   c_aplcon_aplcon(nVariables, nConstraints);
 
   c_aplcon_aprint(0,fit_settings.DebugLevel); // default output on LUNP 0
@@ -567,7 +611,7 @@ void APLCON::Init()
     }
   }
 
-  // save a copy for later
+  // save a pristine copy for later
   V_before = V;
 
   // remember that this instance has inited APLCON

@@ -255,7 +255,9 @@ private:
     // see AddVariable/LinkVariable for usage
     std::vector<double> StoredValues;
     std::vector<double> StoredSigmas;
-    size_t XOffset; // only valid after Init()
+    // offsets/indices only valid after Init()
+    size_t XOffset;
+    std::vector<size_t> V_ij; // for sigmas, see also covariance_t
   };
 
   struct constraint_t {
@@ -271,8 +273,7 @@ private:
   struct covariance_t {
     std::vector<double*> Values;
     std::vector<double>  StoredValues;
-    size_t VOffset1; // offset in V in row direction for first  variable
-    size_t VOffset2; // offset in V in row direction for second variable
+    std::vector<size_t>  V_ij; // indices in V where Values should be copied
   };
 
   // values with starting values (works since map is ordered)
