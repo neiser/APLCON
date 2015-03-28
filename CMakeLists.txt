@@ -28,6 +28,7 @@ add_library(aplcon++ SHARED
   src/APLCON.hpp
   src/detail/APLCON_hpp.hpp
   src/detail/APLCON_cc.hpp
+  src/detail/APLCON_ostream.hpp
   )
 target_link_libraries(aplcon++ aplcon)
 

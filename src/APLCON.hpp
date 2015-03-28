@@ -75,6 +75,11 @@ public:
     Variable_Settings_t Settings;
   };
 
+  struct Result_Constraint_t {
+    std::string Name;
+    size_t Number;    // how many scalar constraints are represented
+  };
+
   struct Result_t {
     std::string Name;
     Result_Status_t Status;
@@ -84,7 +89,8 @@ public:
     int NIterations;
     int NFunctionCalls;
     std::vector<Result_Variable_t> Variables;
-    std::vector<std::string> Constraints;
+    std::vector<Result_Constraint_t> Constraints;
+    const static Result_t Default;
   };
 
   // the usual constructor
@@ -216,7 +222,7 @@ public:
         (std::enable_if<wants_double>(),
          constraint, APLCON_::build_indices<n>{});
 
-    constraints[name] = {varnames, bound, wants_double};
+    constraints[name] = {varnames, bound, wants_double, 0};
     initialized = false;
   }
 
@@ -246,6 +252,7 @@ private:
     std::vector<std::string> VariableNames;
     std::function< std::vector<double> (const std::vector< std::vector<const double*> >&)> Function;
     bool WantsDouble; // true if Function takes single double as all arguments (set by AddConstraint)
+    size_t Number;  // number of represented scalar constraints, set by Init
   };
 
   // since a variable can represent multiple values

@@ -3,19 +3,21 @@
 // detail code is in namespace APLCON_ (note the underscore)
 #include "detail/APLCON_cc.hpp"
 
+// long ostream stuff is in extra header
+#include <detail/APLCON_ostream.hpp>
+
 // include the wrapping C functions
 extern "C" {
 #include "wrapper/APLCON.h"
 }
 
-#include <stdexcept>
-#include <cmath>
-#include <iostream>
 #include <algorithm>
-#include <utility>
-#include <sstream>
-#include <iomanip>
+#include <cmath>
 #include <limits>
+#include <sstream>
+#include <stdexcept>
+#include <utility>
+
 
 using namespace std;
 
@@ -306,7 +308,10 @@ APLCON::Result_t APLCON::DoFit()
   // copy just the names of the constraints
   result.Constraints.reserve(constraints.size());
   for(const auto& c : constraints) {
-    result.Constraints.emplace_back(c.first);
+    Result_Constraint_t con;
+    con.Name = c.first;
+    con.Number = c.second.Number;
+    result.Constraints.emplace_back(con);
   }
   result.Name = instance_name;
   return result;
@@ -379,9 +384,9 @@ void APLCON::Init()
   nConstraints = 0;
   F_func.clear();
   F_func.reserve(constraints.size());
-  for(const auto& c_map : constraints) {
+  for(auto& c_map : constraints) {
     // build the vector of double pointers
-    const constraint_t& constraint = c_map.second;
+    constraint_t& constraint = c_map.second;
     vector< vector<const double*> > args;
     args.reserve(constraint.VariableNames.size()); // args usually smaller, but probably not larger (but not excluded)
     for(const string& varname : constraint.VariableNames) {
@@ -410,6 +415,7 @@ void APLCON::Init()
     // thus obtain the number of constraints
     const vector<double>&  r = func();
     nConstraints += r.size();
+    constraint.Number = r.size();
     F_func.push_back(func);
   }
   F.resize(nConstraints);
@@ -497,173 +503,3 @@ void APLCON::Init()
 
 // finally the ostream implementation for nice (debug) printout
 
-const string APLCON::PrintFormatting::Indent = "   ";
-const string APLCON::PrintFormatting::Marker = ">> ";
-const int APLCON::PrintFormatting::Width = 13;
-
-std::ostream& operator<< (std::ostream& o, const APLCON::Limit_t& l) {
-  return o << "(" << l.Low << ", " << l.High << ")";
-}
-
-std::ostream& operator<< (std::ostream& o, const APLCON::Distribution_t& d) {
-  switch (d) {
-  case APLCON::Distribution_t::Gaussian:
-    o << "Gaussian";
-    break;
-  case APLCON::Distribution_t::LogNormal:
-    o << "LogNormal";
-    break;
-  case APLCON::Distribution_t::Poissonian:
-    o << "Poissonian";
-    break;
-  case APLCON::Distribution_t::SquareRoot:
-    o << "SquareRoot";
-    break;
-  default:
-    throw logic_error("Unkown Distribution_t in ostream");
-    break;
-  }
-  return o;
-}
-
-std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
-  switch (s) {
-  case APLCON::Result_Status_t::Success:
-    o << "Success";
-    break;
-  case APLCON::Result_Status_t::NoConvergence:
-    o << "NoConvergence";
-    break;
-  case APLCON::Result_Status_t::TooManyIterations:
-    o << "TooManyIterations";
-    break;
-  case APLCON::Result_Status_t::UnphysicalValues:
-    o << "UnphysicalValues";
-    break;
-  case APLCON::Result_Status_t::NegativeDoF:
-    o << "NegativeDoF";
-    break;
-  case APLCON::Result_Status_t::OutOfMemory:
-    o << "OutOfMemory";
-    break;
-  default:
-    throw logic_error("Unkown Result_Status_t in ostream");
-    break;
-  }
-
-  return o;
-}
-
-template<typename T, typename F>
-string stringify(const vector<T>& c, F f) {
-  stringstream o;
-  for(size_t i=0 ; i<c.size() ; i++) {
-    o << f(c[i]);
-    if(i != c.size()-1)
-      o << ", ";
-  }
-  return o.str();
-}
-
-template<typename F>
-string stringify_contraints(const vector<APLCON::Result_Variable_t>& variables, const string& in, F f) {
-  const int w = APLCON::PrintFormatting::Width;
-  const int w_varname = APLCON::PrintFormatting::Width+5;
-  stringstream o;
-  o << in << "Covariances: " << endl;
-  o << in << setw(w_varname) << " ";
-  for(size_t i=0;i<variables.size();i++) {
-    stringstream i_;
-    i_ << "(" << i << ")";
-    o << setw(w) << i_.str();
-  }
-  o << endl;
-  for(size_t i=0;i<variables.size();i++) {
-    const APLCON::Result_Variable_t& v = variables[i];
-    stringstream i_;
-    i_ << "(" << i << ") ";
-    o << in << setw(4) << i_.str() << " " << setw(w_varname-5) << v.Name;
-    const vector<double>& cov = f(v);
-    for(size_t j=0;j<cov.size();j++) {
-      o << setw(w) << cov[j];
-    }
-    o << endl;
-  }
-  o << in << setw(w_varname) << " ";
-  for(size_t i=0;i<variables.size();i++) {
-    stringstream i_;
-    i_ << "(" << i << ")";
-    o << setw(w) << i_.str();
-  }
-  o << endl;
-  return o.str();
-}
-
-string stringify_variables(const vector<APLCON::Result_Variable_t>& variables, const string& extra_indent = "") {
-  stringstream o;
-  const int w = APLCON::PrintFormatting::Width;
-  const string& in = extra_indent + APLCON::PrintFormatting::Indent;
-  const string& ma = extra_indent + APLCON::PrintFormatting::Marker;
-  // print stuff before the Fit
-  o << ma << "Before Fit:" << endl << endl;
-  o << in
-    << left << setw(w) << "Name" << right
-    << setw(w)   << "Value"
-    << setw(w)   << "Sigma"
-    << left << setw(2*w) << "   Settings" << right
-    << endl;
-  for(const APLCON::Result_Variable_t& v : variables) {
-    stringstream settings;
-    settings << "   " << v.Settings.Distribution << " " << v.Settings.Limit << " " << v.Settings.StepSize;
-    o << in
-      << left << setw(w) << v.Name << right
-      << setw(w) << v.Value.Before
-      << setw(w) << v.Sigma.Before
-      << left << setw(2*w) << settings.str() << right
-      << endl;
-  }
-  o << endl;
-
-  o << stringify_contraints(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
-
-  // print stuff after the fit
-  o << ma << "After Fit:" << endl << endl;
-  o << in
-    << left << setw(w) << "Variable" << right
-    << setw(w) << "Value"
-    << setw(w) << "Sigma"
-    << setw(w) << "Pull"
-    << endl;
-  for(const APLCON::Result_Variable_t& v : variables) {
-    o << in
-      << left << setw(w) << v.Name << right
-      << setw(w) << v.Value.After
-      << setw(w) << v.Sigma.After
-      << setw(w) << v.Pull
-      << endl;
-  }
-  o << endl;
-
-  o << stringify_contraints(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
-
-  return o.str();
-
-}
-
-ostream& operator<< (ostream& o, const APLCON::Result_t& r) {
-  const string& in = APLCON::PrintFormatting::Indent;
-  const string& ma = APLCON::PrintFormatting::Marker;
-
-  // general info
-  o << ma << (r.Name==""?"APLCON":r.Name) << " with " << r.Variables.size() << " variables and "
-    << r.Constraints.size() << " constraints:" << endl;
-  o << in << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << endl;
-  o << in << "Chi^2 / DoF = " << r.ChiSquare << " / " << r.NDoF << " = " << r.ChiSquare/r.NDoF << endl;
-  o << in << "Probability = " << r.Probability << endl;
-  o << in << "Constraints: " <<
-       stringify(r.Constraints, [](const string& v) {return v;}) << endl << endl;
-
-  if(r.Status == APLCON::Result_Status_t::Success)
-    o << stringify_variables(r.Variables, in);
-  return o;
-}
