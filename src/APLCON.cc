@@ -556,12 +556,26 @@ void APLCON::Init()
         // make sure cov.Values entry p is valid,
         // then see if this covariance connects unmeasured variables
         const double* p = cov.Values[v_ij];
-        if(APLCON_::V_checkentry(p) &&
-           (s1 == 0.0 || s2 == 0.0)
+        if(APLCON_::V_validentry(p) &&
+           (s1 == 0 || s2 == 0)
            ) {
           // valid cov entry, but at least one variable is set to "unmeasured"
+          // figure out which one to provide helpful error message
           stringstream ss;
-          throw Error("test");
+          ss << "Variable";
+          if(s1 == 0 && s2 != 0) {
+            ss << " " << APLCON_::BuildVarName(varnames.first,  n1, i);
+          }
+          else if(s1 != 0 && s2 == 0) {
+            ss << " " << APLCON_::BuildVarName(varnames.second, n2, j);
+          }
+          else {
+            ss << "s "
+               << APLCON_::BuildVarName(varnames.first,  n1, j)
+               << APLCON_::BuildVarName(varnames.second, n2, j);
+          }
+          ss << " in covariance "+cov_name+ " has vanishing sigma, i.e. is unmeasured";
+          throw Error(ss.str());
         }
 
         // V_ij with offsets from corresponding variables

@@ -39,8 +39,8 @@ size_t V_ij(const size_t i, const size_t j) {
     return j*(j+1)/2 + i;
 }
 
-bool V_checkentry(const double* p) {
-  return p==nullptr || !std::isfinite(*p);
+bool V_validentry(const double* p) {
+  return p!=nullptr && std::isfinite(*p);
 }
 
 void V_transform(
@@ -53,7 +53,7 @@ void V_transform(
   for(size_t i=0;i<values.size();i++) {
     const double* p = values[i];
     // just continue if some value should be kept at default
-    if(V_checkentry(p))
+    if(!V_validentry(p))
       continue;
     V[V_ij[i]] = transform(*p);
   }
