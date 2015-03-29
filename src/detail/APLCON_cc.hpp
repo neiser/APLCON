@@ -14,9 +14,9 @@ T* make_pointer(T& t) {
 }
 
 template <typename T>
-void copy_pointers(std::vector<T>& source, std::vector<T*>& target)
+void make_pointers_if_any(std::vector<T>& source, std::vector<T*>& target)
 {
-  if(source.size()==0)
+  if(source.empty())
     return;
   target.resize(source.size());
   std::transform(source.begin(), source.end(), target.begin(), make_pointer<T>);
@@ -37,12 +37,13 @@ size_t V_ij(const size_t& i, const size_t& j) {
     return j*(j+1)/2 + i;
 }
 
-
-void transform_to_V(std::vector<double>& V,
-               const std::vector<double*>& values,
-               const std::vector<size_t>& V_ij,
-               std::function<double(double)> transform = [] (double d) {return d;}
-               ) {
+void transform_to_V(
+    std::vector<double>& V,
+    const std::vector<double*>& values,
+    const std::vector<size_t>& V_ij,
+    std::function<double(double)> transform = [] (double d) {return d;} // identity function as default
+    )
+{
   for(size_t i=0;i<values.size();i++) {
     const double* p = values[i];
     // just continue if some value should be kept at default

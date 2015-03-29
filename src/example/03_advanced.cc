@@ -10,6 +10,7 @@ int main() {
   // this example illustrates some more advanced usage of the APLCON interface,
   // like setting up (optionally linked) covariances
   // and more complex constraint functions
+  // it is also a toy model kinematical fitter...
 
   // please feel free to modify the code here and see
   // if APLCON will throw you a meaningful exception in
@@ -36,16 +37,22 @@ int main() {
 
   // just some particles
   // zeroth component should be large enough
-  // for meaningful invariant mass
-  Vec vec1a = { 10, 2, 3, 4};
-  Vec vec2a = { 50, 6, 7, 8};
+  // for non-imaginary invariant mass
+  Vec vec1a = { sqrt(4+9+16)*1.02,   2,  3,  4}; // that's a photon up to 2%
+  Vec vec2a = { sqrt(4+9+16)*1.05,  -2, -3, -4}; // that's a photon up to 5%, flying in the opposite direction
+  Vec vec3a = { 13,                  0,  0,  0}; // that's something with rest mass 13
 
-  // linked sigmas are shown in 02_linker.cc
-  const vector<double> sigma1 = {1};
-  const vector<double> sigma2 = {2};
+
+  // linked sigmas are already demonstrated in 02_linker.cc
+  // so here we just assume some errors on the percent level for the photons
+  const vector<double> sigma1 = {0.3};
+  const vector<double> sigma2 = {0.4};
+  // third particle is unmeasured, so sigma=0
+  const vector<double> sigma3 = {0};
 
   // you're totally free in
-  // how the fields of your data structure are linked:
+  // how the fields of your data structure are linked
+  // you might have also specified the particle by energy, theta and phi
 
   // for instance a, we separate E and p
   auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
@@ -54,6 +61,9 @@ int main() {
   a.LinkVariable("Vec1_p", linker_p(vec1a), sigma1);
   a.LinkVariable("Vec2_E", linker_E(vec2a), sigma2);
   a.LinkVariable("Vec2_p", linker_p(vec2a), sigma2);
+  a.LinkVariable("Vec3_E", linker_E(vec3a), sigma3);
+  a.LinkVariable("Vec3_p", linker_p(vec3a), sigma3);
+
 
 
   // #######################################
@@ -127,20 +137,35 @@ int main() {
     // (mixing scalar/vector arguments are not supported at the moment)
     // M^2 = E^2 - vec(p)^2
     const double M2 = pow(E[0],2) - pow(p[0],2) - pow(p[1],2) - pow(p[2],2);
-    return M2 - pow(60,2); // require it to be some value
+    return M2; // require the invariant mass to be zero
   };
   a.AddConstraint("invariant_mass", {"Vec1_E", "Vec1_p"}, invariant_mass);
 
   // example for case (4)
-  auto equal_momentum_3 = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
-    // one should check that the vectors a, b have the appropiate lengths...
+  auto opposite_momentum_3 = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
+    // one may check that the vectors a, b have the appropiate lengths
+    // that's something the interface can't do for you...
     return {
-      a[0] - b[0],
-      a[1] - b[1],
-      a[2] - b[2]
+      a[0] + b[0],
+      a[1] + b[1],
+      a[2] + b[2]
     }; // returns 3 scalar constraints
   };
-  a.AddConstraint("equal_momentum",  {"Vec1_p", "Vec2_p"}, equal_momentum_3);
+  // the two photons shall fly back to back
+  a.AddConstraint("opposite_momentum",  {"Vec1_p", "Vec2_p"}, opposite_momentum_3);
+
+  // to make the fit somewhat meaningful, provide the four-momentum conservation,
+  // so Vec1+Vec2=Vec3 aka Vec1+Vec2-Vec3 = 0
+  auto require_conservation = [] (
+      const vector<double>& v1_E,
+      const vector<double>& v1_p,
+      const vector<double>& v2_E,
+      const vector<double>& v2_p,
+      const vector<double>& v3_E,
+      const vector<double>& v3_p
+      ) -> vector<double> {
+    //return
+  };
 
   // don't execute DoFit yet because we copy the initial values in Vec1/Vec2 below
 
@@ -180,7 +205,6 @@ int main() {
   // finally, do the fit
   // note that many setup exceptions are only thrown here,
   // because only with a fully setup instance it's possible to check many things
-
   cout.precision(3); // set precision globally, which makes output nicer
   cout << a.DoFit() << endl;
 

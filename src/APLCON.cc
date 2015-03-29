@@ -424,8 +424,8 @@ void APLCON::Init()
     // in Init is the best place to do this pointer business,
     // so make it for the internally stored variables here
     // we need to work on Values/Sigmas independently, since Sigmas are only optionally linked
-    APLCON_::copy_pointers(var.StoredValues, var.Values);
-    APLCON_::copy_pointers(var.StoredSigmas, var.Sigmas);
+    APLCON_::make_pointers_if_any(var.StoredValues, var.Values);
+    APLCON_::make_pointers_if_any(var.StoredSigmas, var.Sigmas);
 
     // now, externally linked variables and internally stored can
     // be treated equally
@@ -459,11 +459,9 @@ void APLCON::Init()
     vector< vector<const double*> > args;
     args.reserve(constraint.VariableNames.size()); // args usually smaller, but probably not larger (but not excluded)
     for(const string& varname : constraint.VariableNames) {
-      const auto& it = variables.find(varname);
-      if(it == variables.end()) {
-        throw logic_error("Constraint '"+it_map.first+"' refers to unknown variable '"+varname+"'");
-      }
-      const variable_t& var = it->second;
+      const variable_t& var = GetVariableByName(
+            varname,
+            "Constraint '"+it_map.first+"' refers to unknown variable '"+varname+"'");
       // check if constraint fits to variables
       if(constraint.WantsDouble && var.Values.size()>1) {
         stringstream msg;
@@ -497,79 +495,72 @@ void APLCON::Init()
     const pair<string, string>& varnames = it_map.first;
     covariance_t& cov = it_map.second;
 
-    // create the pointers for internally stored covariances
-    APLCON_::copy_pointers(cov.StoredValues, cov.Values);
+    // create the pointers for internally stored covariances now,
+    // because we need cov.Values.size() to be correct in the following
+    // no matter if linked of internal covariance is used
+    APLCON_::make_pointers_if_any(cov.StoredValues, cov.Values);
 
     const string& cov_name = "<'"+varnames.first+"','"+varnames.second+"'>";
 
     // the setup of the index mapping filed V_ij in constraint_t
-    // differs strongly for off-diagonal vs. diagonal covariance elements
+    // differs somewhat for off-diagonal vs. diagonal covariance elements
+    // so we control this with a little flag
+    const bool varnames_equal = varnames.first == varnames.second;
 
-    if(varnames.first == varnames.second) {
-      // varnames are equal, only one search required
-      auto it = variables.find(varnames.first);
-      if(it == variables.end()) {
-        throw logic_error("Variable name '"+varnames.first+"' for covariance "+cov_name+" not defined");
-      }
-      const variable_t& var = it->second;
-      const size_t n = var.Values.size();
-      if(var.Values.size()==1) {
-        throw logic_error("Use sigma to define uncertainty of scalar covariance "+cov_name);
-      }
-      const size_t v_n = n*(n-1)/2; // expected size of the submatrix without diagonal elements
+    const variable_t& var1 = GetVariableByName(
+          varnames.first,
+          "Variable name '"+varnames.first+"' for covariance "+cov_name+" not defined");
 
-      if(v_n != cov.Values.size()) {
-        stringstream msg;
-        msg << "Covariance " << cov_name << " provides " << cov.Values.size()
-            << " element" << (cov.Values.size()==1?"":"s") << ", but " << v_n << " covariances needed with"
-            << " variable dimensions <" << n << "," << n << ">";
-        throw logic_error(msg.str());
-      }
+    // only search second varname if unequal
+    const variable_t& var2 = varnames_equal
+        ? var1 :
+          GetVariableByName(
+                   varnames.second,
+                   "Variable name '"+varnames.second+"' for covariance "+cov_name+" not defined");
 
-      cov.V_ij.reserve(cov.Values.size());
-      for(size_t i=0;i<n;i++) {
-        for(size_t j=0;j<i;j++) {
-          cov.V_ij.push_back(APLCON_::V_ij(i+var.XOffset,j+var.XOffset));
-        }
-      }
+    const size_t n1 = var1.Values.size();
+    const size_t n2 = var2.Values.size();
+
+    if(varnames_equal && n1==1) {
+      throw logic_error("Use sigma to define uncertainty of scalar covariance "+cov_name);
     }
-    else {
-      // varnames are different, search them both
-      auto it1 = variables.find(varnames.first);
-      if(it1 == variables.end()) {
-        throw logic_error("First variable name '"+varnames.first+"' for covariance "+cov_name+" not defined");
-      }
 
-      auto it2 = variables.find(varnames.second);
-      if(it2 == variables.end()) {
-        throw logic_error("Second variable name '"+varnames.second+"' for covariance "+cov_name+" not defined");
-      }
-      const variable_t& var1 = it1->second;
-      const variable_t& var2 = it2->second;
-      const size_t n1 = var1.Values.size();
-      const size_t n2 = var2.Values.size();
-      const size_t v_n = n1*n2; // expected size of the submatrix, there are no di
+    // expected size of the submatrix without diagonal elements (if varnames equal)
+    const size_t v_n = varnames_equal ? n1*(n1-1)/2 : n1*n2;
 
-      if(v_n != cov.Values.size()) {
-        stringstream msg;
-        msg << "Covariance " << cov_name << " provides " << cov.Values.size()
-            << " element" << (cov.Values.size()==1?"":"s") << ", but " << v_n << " covariances needed with"
-            << " variable dimensions <" << n1 << "," << n2 << ">";
-        throw logic_error(msg.str());
-      }
-      // var1 refers to rows, var2 to columns (standard mathematics convention)
-      cov.V_ij.reserve(cov.Values.size());
-      for(size_t i=0;i<n1;i++) {
-        for(size_t j=0;j<n2;j++) {
-          cov.V_ij.push_back(APLCON_::V_ij(i+var1.XOffset,j+var2.XOffset));
-        }
+    if(v_n != cov.Values.size()) {
+      stringstream msg;
+      msg << "Covariance " << cov_name << " provides " << cov.Values.size()
+          << " element" << (cov.Values.size()==1?"":"s") << ", but " << v_n << " covariances needed with"
+          << " variable dimensions <" << n1 << "," << n2 << ">";
+      throw logic_error(msg.str());
+    }
+
+
+
+
+    // build the indices V_ij, depending on XOffsets of the variables
+    // var1 refers to rows, var2 to columns (standard mathematics convention)
+    cov.V_ij.reserve(cov.Values.size());
+    for(size_t i=0;i<n1;i++) {
+      for(size_t j=0;j<n2;j++) {
+        // again, handle the special case when varnames are equal
+        if(varnames_equal && !(i<j))
+          continue;
+        // also, check if covariance defined for unmeasured variable
+        // which is not meaningful, I guess
+        //if()
+        //const double s1 = *(var1.Sigmas[i]);
+        //const double s2 = *(var2.Sigmas[j]);
+
+
+        cov.V_ij.push_back(APLCON_::V_ij(i+var1.XOffset,j+var2.XOffset));
       }
     }
 
     // now, with some properly initialized cov.V_ij for each case,
     // we can fill the non-diagonal values of V
     APLCON_::transform_to_V(V, cov.Values, cov.V_ij);
-
   }
 
   // finally we know the number of variables and constraints

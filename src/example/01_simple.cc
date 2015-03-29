@@ -45,6 +45,8 @@ int main() {
 
   // now we can finally do the different fits (some with correlations)
 
+  cout.precision(3); // set precision globally, which makes output nicer
+
   // first, no correlation
   // note that DoFit() returns a pretty comprehensive struct of type APLCON::Result_t
   // using the variable also makes the APLCON banner appear at the right place, by the way :)

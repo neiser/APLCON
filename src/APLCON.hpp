@@ -327,6 +327,14 @@ private:
       const std::string& var1, const std::string& var2
       );
 
+  APLCON::variable_t GetVariableByName(const std::string& varname, const std::string& errmsg) {
+    const auto& it = variables.find(varname);
+    if(it == variables.end()) {
+      throw std::logic_error(errmsg);
+    }
+    return it->second;
+  }
+
   template<typename T>
   void CheckMapKey(const std::string& tag, const std::string& name,
                    std::map<std::string, T> c) {
