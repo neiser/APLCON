@@ -278,13 +278,7 @@ APLCON::Result_t APLCON::DoFit()
   }
   result.Status = static_cast<Result_Status_t>(aplcon_ret);
 
-  // return default result if not successful
-  if(result.Status != Result_Status_t::Success)
-    return result;
-
-  // now retrieve everything from APLCON,
-  // we don't do any calculation on our own
-  // since we are a stupid wrapper :)
+  // now retrieve "everything" from APLCON
 
   // retrieve some info about the fit (directly copy to struct field if possible)
   float chi2, pval;
@@ -363,8 +357,6 @@ APLCON::Result_t APLCON::DoFit()
       result.Variables.push_back(move(var));
     }
   }
-
-
 
   // copy just the names of the constraints
   result.Constraints.reserve(constraints.size());

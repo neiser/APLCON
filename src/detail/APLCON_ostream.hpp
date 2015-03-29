@@ -70,12 +70,16 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
 }
 
 template<typename F>
-std::string stringify_covariances(const std::vector<APLCON::Result_Variable_t>& variables,
-                                 const std::string& in,
-                                 F f) {
+void stringify_covariances(
+    std::ostream& o,
+    const std::vector<APLCON::Result_Variable_t>& variables,
+    const std::string& in,
+    F f,
+    double factor = 1.0
+    ) {
+
   const int w = APLCON::PrintFormatting::Width;
   const int w_varname = APLCON::PrintFormatting::Width;
-  std::stringstream o;
   o << in << std::setw(w_varname) << " ";
   for(size_t i=0;i<variables.size();i++) {
     std::stringstream i_;
@@ -92,7 +96,7 @@ std::string stringify_covariances(const std::vector<APLCON::Result_Variable_t>& 
       << std::left << std::setw(w_varname-4) << v.Name << std::right;
     const std::vector<double>& cov = f(v);
     for(size_t j=0;j<cov.size();j++) {
-      o << std::setw(w) << cov[j];
+      o << std::setw(w) << cov[j]*factor;
     }
     o << std::endl;
   }
@@ -103,12 +107,13 @@ std::string stringify_covariances(const std::vector<APLCON::Result_Variable_t>& 
     o << std::setw(w) << i_.str();
   }
   o << std::endl;
-  return o.str();
 }
 
-std::string stringify_variables(const std::vector<APLCON::Result_Variable_t>& variables,
-                                const std::string& extra_indent = "") {
-  std::stringstream o;
+void stringify_variables(
+    std::ostream& o,
+    const std::vector<APLCON::Result_Variable_t>& variables,
+    const std::string& extra_indent = "",
+    const bool success = true) {
   const int w = APLCON::PrintFormatting::Width;
   const std::string& in = extra_indent + APLCON::PrintFormatting::Indent;
   const std::string& ma = extra_indent + APLCON::PrintFormatting::Marker;
@@ -133,10 +138,16 @@ std::string stringify_variables(const std::vector<APLCON::Result_Variable_t>& va
   o << std::endl;
 
   o << in << "Covariances: " << std::endl;
-  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
+  stringify_covariances(o, variables, in,
+                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
 
-  o << in << "Correlations: " << std::endl;
-  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;});
+  o << in << "Correlations (in %): " << std::endl;
+  stringify_covariances(o, variables, in,
+                        [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;},
+                        100);
+
+  if(!success)
+    return;
 
   // print stuff after the fit
   o << ma << "After Fit:" << std::endl << std::endl;
@@ -157,12 +168,13 @@ std::string stringify_variables(const std::vector<APLCON::Result_Variable_t>& va
   o << std::endl;
 
   o << in << "Covariances: " << std::endl;
-  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
+  stringify_covariances(o, variables, in,
+                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
 
-  o << in << "Correlations: " << std::endl;
-  o << stringify_covariances(variables, in, [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;});
-
-  return o.str();
+  o << in << "Correlations (in %): " << std::endl;
+  stringify_covariances(o, variables, in,
+                        [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;},
+                        100);
 
 }
 
@@ -170,10 +182,14 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_t& r) {
   const std::string& in = APLCON::PrintFormatting::Indent;
   const std::string& ma = APLCON::PrintFormatting::Marker;
 
+  const bool success = r.Status == APLCON::Result_Status_t::Success;
+
+  const std::string& tag = success ? "" : "ERROR ";
+
   // general info
   o << ma << (r.Name==""?"APLCON":r.Name) << " with " << r.Variables.size() << " variables and "
     << r.Constraints.size() << " constraints:" << std::endl;
-  o << in << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << std::endl;
+  o << in << tag << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << std::endl;
   o << in << "Chi^2 / DoF = " << r.ChiSquare << " / " << r.NDoF << " = " << r.ChiSquare/r.NDoF << std::endl;
   o << in << "Probability = " << r.Probability << std::endl;
   o << in << "Constraints: ";
@@ -187,8 +203,7 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_t& r) {
   }
   o << std::endl;
 
-  if(r.Status == APLCON::Result_Status_t::Success)
-    o << stringify_variables(r.Variables, in);
+  stringify_variables(o, r.Variables, in, success);
   return o;
 }
 
