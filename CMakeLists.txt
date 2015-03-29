@@ -38,5 +38,5 @@ target_link_libraries(APLCON_example_01 aplcon++)
 add_executable(APLCON_example_02 src/example/02_linker.cc)
 target_link_libraries(APLCON_example_02 aplcon++)
 
-add_executable(APLCON_example_03 src/example/03_kinfit.cc)
+add_executable(APLCON_example_03 src/example/03_advanced.cc)
 target_link_libraries(APLCON_example_03 aplcon++)

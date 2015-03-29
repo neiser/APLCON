@@ -5,9 +5,20 @@ using namespace std;
 
 int main() {
 
+  // this example illustrates some more advanced
+  // usage of the interface,
+  // like setting up (possibly linked) covariances
+  // and more complex constraint functions
 
-  APLCON a("KinFit");
+  // please feel free to modify the code here and see
+  // if APLCON will throw you a meaningful exception in
+  // case you set up something stupid :)
 
+  APLCON a("Covariances");
+  APLCON b("Linked Covariances");
+
+  // as an example structure, we use something
+  // which looks like a Lorentz vector
   struct Vec {
     double E;
     double px;
@@ -15,22 +26,33 @@ int main() {
     double pz;
   };
 
-  Vec vec1 = { 1, 2, 3, 4};
-  Vec vec2 = { 5, 6, 7, 8};
-  Vec vec3 = { 9,10,11,12};
-  Vec vec4 = {13,14,15,16};
+  // just some particles..
+  Vec vec1a = { 1, 2, 3, 4};
+  Vec vec2a = { 5, 6, 7, 8};
+  Vec vec1b = vec1a;
+  Vec vec2b = vec2a;
 
-  auto linker   = [] (Vec& v) -> vector<double*> { return {&v.E, &v.px, &v.py, &v.pz}; };
+
+  // you're totally free in
+  // how the fields of your data structure are linked
+
+  // for instance a, we separate E and p
   auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
   auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
+  a.LinkVariable("Vec1_E", linker_E(vec1a), vector<double>{1});
+  a.LinkVariable("Vec1_p", linker_p(vec1a), vector<double>{1});
+  a.LinkVariable("Vec2_E", linker_E(vec2a), vector<double>{2});
+  a.LinkVariable("Vec2_p", linker_p(vec2a), {2});
 
-  a.LinkVariable("Vec1_E", linker_E(vec1), vector<double>{1});
-  a.LinkVariable("Vec1_p", linker_p(vec1), vector<double>{2});
-  a.LinkVariable("Vec2_E", linker_E(vec2), vector<double>{3});
-  a.LinkVariable("Vec2_p", linker_p(vec2), vector<double>{4});
-  a.LinkVariable("Vec3",   linker(vec3),   vector<double>{5});
-  a.LinkVariable("Vec4",   linker(vec4),   vector<double>{6});
+  // for instance b, we link all 4 components at once
+  auto linker4   = [] (Vec& v) -> vector<double*> { return {&v.E, &v.px, &v.py, &v.pz}; };
+  b.LinkVariable("Vec1", linker4(vec1b), vector<double>{1});
+  b.LinkVariable("Vec2", linker4(vec2b), vector<double>{2});
 
+
+  // SetCovariance was already used for scalar variables in the first example
+  // here we show how to setup covariances for vector-valued variables
+  // and how to setup
 
   a.SetCovariance("Vec1_p", "Vec1_p",
                   vector<double>{
@@ -88,31 +110,4 @@ int main() {
 
   cout << a.DoFit() << endl;
 
-
-//  auto scalar2scalar = [] (const double& a) -> double {
-//    return  a;
-//  };
-
-//  auto scalar2vector = [] (const double& a) -> vector<double> {
-//    return  {a};
-//  };
-
-//  auto vector2scalar = [] (const vector<double>& a) -> double {
-//    return  a[0] - a[1];
-//  };
-
-//  auto vector2vector = [] (const vector<double>& a) -> vector<double> {
-//    return  {a[0] - a[1]};
-//  };
-
-//  a.AddConstraint("1", {"BF_e"}, scalar2scalar);
-//  a.AddConstraint("2", {"BF_e"}, scalar2vector);
-//  a.AddConstraint("3", {"BF_e"}, vector2scalar);
-//  a.AddConstraint("4", {"BF_e"}, vector2vector);
-
-  //  auto wrong = [] (const vector<double>& a, double b) -> vector<double> {
-  //    return  {a[0] - a[1] + b};
-  //  };
-
-    //a.AddConstraint("4", {"BF_e", "BF_tau"}, wrong);
 }
