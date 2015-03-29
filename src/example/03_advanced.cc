@@ -80,7 +80,7 @@ int main() {
   const double E_px = 0.001;
   const double E_py = 0.002;
   const double E_pz = 0.003;
-  a.SetCovariance("Vec1_E", "Vec1_p", // variables give 1 row and 3 columns
+  a.SetCovariance("Vec1_E", "Vec2_p", // variables give 1 row and 3 columns
                   vector<double>{
                     E_px, E_py, E_pz
                   });
@@ -207,11 +207,10 @@ int main() {
   // set it to the same values as for instance a
   vector<double> linked_covariance_vec1 = {
 
-
   };
 
   auto equal_vector = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
-    // TODO: check check if sizes of a and b are equal
+    // one should check if sizes of a and b are equal
     vector<double> r(a.size());
     for(size_t i=0;i<a.size();i++)
       r[i] = a[i]-b[i];
