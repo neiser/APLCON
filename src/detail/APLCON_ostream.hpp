@@ -75,6 +75,7 @@ void stringify_covariances(
     const std::vector<APLCON::Result_Variable_t>& variables,
     const std::string& in,
     F f,
+    bool skipUnmeasured,
     double factor = 1.0
     ) {
 
@@ -82,6 +83,9 @@ void stringify_covariances(
   const int w_varname = APLCON::PrintFormatting::Width;
   o << in << std::setw(w_varname) << " ";
   for(size_t i=0;i<variables.size();i++) {
+    const APLCON::Result_Variable_t& v = variables[i];
+    if(skipUnmeasured && v.Sigma.Before == 0)
+      continue;
     std::stringstream i_;
     i_ << "(" << i << ")";
     o << std::setw(w) << i_.str();
@@ -89,6 +93,8 @@ void stringify_covariances(
   o << std::endl;
   for(size_t i=0;i<variables.size();i++) {
     const APLCON::Result_Variable_t& v = variables[i];
+    if(skipUnmeasured && v.Sigma.Before == 0)
+      continue;
     std::stringstream i_;
     const size_t padding = i<10 ? 0 : 1; // breaks with more than 100 variables...
     i_ << i << ") ";
@@ -96,12 +102,18 @@ void stringify_covariances(
       << std::left << std::setw(w_varname-4) << v.Name << std::right;
     const std::vector<double>& cov = f(v);
     for(size_t j=0;j<cov.size();j++) {
+      const APLCON::Result_Variable_t& v_j = variables[j];
+      if(skipUnmeasured && v_j.Sigma.Before == 0)
+        continue;
       o << std::setw(w) << cov[j]*factor;
     }
     o << std::endl;
   }
   o << in << std::setw(w_varname) << " ";
   for(size_t i=0;i<variables.size();i++) {
+    const APLCON::Result_Variable_t& v = variables[i];
+    if(skipUnmeasured && v.Sigma.Before == 0)
+      continue;
     std::stringstream i_;
     i_ << "(" << i << ")";
     o << std::setw(w) << i_.str();
@@ -139,11 +151,13 @@ void stringify_variables(
 
   o << in << "Covariances: " << std::endl;
   stringify_covariances(o, variables, in,
-                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;});
+                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;},
+                        true);
 
   o << in << "Correlations (in %): " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;},
+                        true,
                         100);
 
   if(!success)
@@ -169,11 +183,13 @@ void stringify_variables(
 
   o << in << "Covariances: " << std::endl;
   stringify_covariances(o, variables, in,
-                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;});
+                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;},
+                        false);
 
   o << in << "Correlations (in %): " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;},
+                        false,
                         100);
 
 }
@@ -188,7 +204,7 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_t& r) {
 
   // general info
   o << ma << (r.Name==""?"APLCON":r.Name) << " with " << r.Variables.size() << " variables and "
-    << r.Constraints.size() << " constraints:" << std::endl;
+    << r.NScalarConstraints << " constraints:" << std::endl;
   o << in << tag << r.Status << " after " << r.NIterations << " iterations, " << r.NFunctionCalls << " function calls " << std::endl;
   o << in << "Chi^2 / DoF = " << r.ChiSquare << " / " << r.NDoF << " = " << r.ChiSquare/r.NDoF << std::endl;
   o << in << "Probability = " << r.Probability << std::endl;

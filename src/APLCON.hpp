@@ -93,6 +93,7 @@ public:
     int NFunctionCalls;
     std::vector<Result_Variable_t> Variables;
     std::vector<Result_Constraint_t> Constraints;
+    int NScalarConstraints;
     const static Result_t Default;
   };
 

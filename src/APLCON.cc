@@ -361,6 +361,7 @@ APLCON::Result_t APLCON::DoFit()
     con.Number = c.second.Number;
     result.Constraints.emplace_back(con);
   }
+  result.NScalarConstraints = nConstraints;
   result.Name = instance_name;
   return result;
 }
@@ -540,8 +541,6 @@ void APLCON::Init()
     for(size_t i=0;i<n1;i++) {
       for(size_t j=0;j<n2;j++) {
 
-
-
         // again, handle the special case when varnames are equal
         if(varnames_equal && !(i<j))
           continue;
@@ -551,8 +550,9 @@ void APLCON::Init()
         const double s1 = *(var1.Sigmas[i]);
         const double s2 = *(var2.Sigmas[j]);
         // calculating the position is different for diagonal/off-diagonal
-        // use V_ij as offset of i x i large matrix
-        const size_t v_ij = varnames_equal ? APLCON_::V_ij(i,i)+j : i*n2+j;
+        // use V_ij as offset of (i-1) x (i-1) large matrix,
+        // note that i=j=0 is excluded due to i<j condition
+        const size_t v_ij = varnames_equal ? APLCON_::V_ij(i-1,i-1)+j : i*n2+j;
         // make sure cov.Values entry p is valid,
         // then see if this covariance connects unmeasured variables
         const double* p = cov.Values[v_ij];
