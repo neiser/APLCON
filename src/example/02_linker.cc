@@ -55,6 +55,7 @@ int main() {
   // do fit and print everything
   // that is identical to the first example,
   // even though we specified the variables in a different order
+  cout.precision(3); // set precision globally, which makes output nicer
   cout << a.DoFit() << endl;
 
   // double-check if linking actually works

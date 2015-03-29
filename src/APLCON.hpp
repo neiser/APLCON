@@ -223,7 +223,7 @@ public:
       std::stringstream msg;
       msg << "Constraint '" << name << "': Function argument number (" << n <<
              ") does not match the number of provided varnames (" << varnames.size() << ")";
-      throw std::logic_error(msg.str());
+      throw Error(msg.str());
     }
 
     // the flag wants_double and returns_double select the corresponding bind_constraint
@@ -236,6 +236,11 @@ public:
     initialized = false;
   }
 
+  // our own exception which is thrown if something's wrong
+  class Error : public std::runtime_error {
+  public:
+    explicit Error(const std::string& msg) : runtime_error(msg) {}
+  };
 
   // some printout formatting stuff
   // used in overloaded << operators
@@ -330,7 +335,7 @@ private:
   APLCON::variable_t GetVariableByName(const std::string& varname, const std::string& errmsg) {
     const auto& it = variables.find(varname);
     if(it == variables.end()) {
-      throw std::logic_error(errmsg);
+      throw Error(errmsg);
     }
     return it->second;
   }
@@ -339,10 +344,10 @@ private:
   void CheckMapKey(const std::string& tag, const std::string& name,
                    std::map<std::string, T> c) {
     if(name.empty()) {
-      throw std::logic_error(tag+" name empty");
+      throw Error(tag+" name empty");
     }
     if(c.find(name) != c.end()) {
-      throw std::logic_error(tag+" with name '"+name+"' already added");
+      throw Error(tag+" with name '"+name+"' already added");
     }
   }
 

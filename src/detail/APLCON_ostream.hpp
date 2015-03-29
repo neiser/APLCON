@@ -35,7 +35,7 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Distribution_t& d) {
     o << "SquareRoot";
     break;
   default:
-    throw std::logic_error("Unkown Distribution_t in ostream");
+    throw APLCON::Error("Unkown Distribution_t in ostream");
     break;
   }
   return o;
@@ -62,7 +62,7 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
     o << "OutOfMemory";
     break;
   default:
-    throw std::logic_error("Unknown Result_Status_t in ostream");
+    throw APLCON::Error("Unknown Result_Status_t in ostream");
     break;
   }
 

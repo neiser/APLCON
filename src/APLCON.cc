@@ -64,10 +64,10 @@ void APLCON::AddMeasuredVariable(const std::string &name, const double value, co
                                  const APLCON::Variable_Settings_t& settings)
 {
   if(sigma == 0) {
-    throw logic_error("Measured variables need non-zero sigma. By definition, they are unmeasured then.");
+    throw Error("Measured variables need non-zero sigma. By definition, they are unmeasured then.");
   }
   if(settings.StepSize == 0) {
-    throw logic_error("Measured variables need non-zero step size. By definition, they are fixed then.");
+    throw Error("Measured variables need non-zero step size. By definition, they are fixed then.");
   }
   AddVariable(name, value, sigma, settings);
 }
@@ -76,7 +76,7 @@ void APLCON::AddUnmeasuredVariable(const string &name, const double value,
                                    const APLCON::Variable_Settings_t& settings)
 {
   if(settings.StepSize == 0) {
-    throw logic_error("Unmeasured variables need non-zero step size. By definition, they are fixed then.");
+    throw Error("Unmeasured variables need non-zero step size. By definition, they are fixed then.");
   }
   // unmeasured variables have a sigma of 0
   AddVariable(name, value, 0, settings);
@@ -86,7 +86,7 @@ void APLCON::AddFixedVariable(const string &name, const double value, const doub
                               const Distribution_t &distribution)
 {
   if(sigma == 0) {
-    throw logic_error("Fixed variables need non-zero sigma. By definition, they are unmeasured then.");
+    throw Error("Fixed variables need non-zero sigma. By definition, they are unmeasured then.");
   }
   // fixed variables have stepSize of 0
   // and limits don't apply (probably?)
@@ -143,11 +143,11 @@ APLCON::variables_t::iterator APLCON::LinkVariable(
 
   const size_t n = values.size();
   if(n==0) {
-    throw std::logic_error("At least one value should be linked");
+    throw Error("At least one value should be linked");
   }
 
   if(sigmas_size != n) {
-    throw std::logic_error("Sigmas size does not match number of provided values");
+    throw Error("Sigmas size does not match number of provided values");
   }
 
   variable_t var;
@@ -161,7 +161,7 @@ APLCON::variables_t::iterator APLCON::LinkVariable(
   }
   else if(settings.size() != n) {
     // 0, 1 or it must fit to values...
-    throw std::logic_error("Settings size does not match number of provided values");
+    throw Error("Settings size does not match number of provided values");
   }
   else {
     var.Settings = settings;
@@ -182,7 +182,7 @@ void APLCON::SetCovariance(const std::string& var1,
                            const double covariance) {
 
   if(var1 == var2) {
-    throw logic_error("Covariance variable names must be different");
+    throw Error("Covariance variable names must be different");
   }
   auto it = MakeCovarianceEntry(var1, var2);
   auto& values = it->second.StoredValues;
@@ -194,7 +194,7 @@ void APLCON::SetCovariance(const std::string& var1,
                            const std::vector<double>& covariance) {
   auto it = MakeCovarianceEntry(var1, var2);
   if(covariance.empty()) {
-    throw logic_error("Empty covariance values given");
+    throw Error("Empty covariance values given");
   }
   it->second.StoredValues = covariance;
 }
@@ -204,7 +204,7 @@ void APLCON::SetCovariance(const std::string& var1,
                            const std::vector<double*>& covariance) {
   auto it = MakeCovarianceEntry(var1, var2);
   if(covariance.empty()) {
-    throw logic_error("Empty covariance pointers given");
+    throw Error("Empty covariance pointers given");
   }
   it->second.Values = covariance;
 }
@@ -214,7 +214,7 @@ APLCON::covariances_t::iterator APLCON::MakeCovarianceEntry(
     const string &var2)
 {
   if(var1.empty() || var2.empty()) {
-    throw logic_error("Covariance variable names cannot be empty strings");
+    throw Error("Covariance variable names cannot be empty strings");
   }
   // we cannot check in general if the variables should have different names
   // since for vector variables, there are still correlations possible
@@ -274,7 +274,7 @@ APLCON::Result_t APLCON::DoFit()
 
   // make some evil static_cast, but it's way shorter than switch statement
   if(aplcon_ret >= static_cast<int>(Result_Status_t::_Unknown)) {
-    throw logic_error("Unkown return value after APLCON fit");
+    throw Error("Unkown return value after APLCON fit");
   }
   result.Status = static_cast<Result_Status_t>(aplcon_ret);
 
@@ -305,12 +305,7 @@ APLCON::Result_t APLCON::DoFit()
       size_t i = before.XOffset+k;
 
       Result_Variable_t var;
-      stringstream s_name;
-      s_name << name;
-      if(before.Values.size()>1) {
-        s_name << "[" << k << "]";
-      }
-      var.Name = s_name.str();
+      var.Name = APLCON_::BuildVarName(name, before.Values.size(), k);
       var.Value = {*(before.Values[k]), X[i]};
 
       // pow/sqrt of covariance is actually the only calcution the wrapper does
@@ -389,7 +384,7 @@ void APLCON::Init()
       auto dereference = [] (const double* d) {return *d;};
       transform(var.Values.begin(), var.Values.end(), X_offset, dereference);
       // copy the sigmas to diagonal of V
-      APLCON_::transform_to_V(V, var.Sigmas, var.V_ij,
+      APLCON_::V_transform(V, var.Sigmas, var.V_ij,
                               [] (double d) {return pow(d,2);});
     }
 
@@ -399,7 +394,7 @@ void APLCON::Init()
     // for measured variables or, say, constrained fitting
     for(const auto& it_map : covariances) {
       const auto& cov = it_map.second;
-      APLCON_::transform_to_V(V, cov.Values, cov.V_ij);
+      APLCON_::V_transform(V, cov.Values, cov.V_ij);
     }
     return;
   }
@@ -467,7 +462,7 @@ void APLCON::Init()
         stringstream msg;
         msg << "Constraint '" << it_map.first << "' wants only single double arguments, "
             << "but '" << varname << "' consists of " << var.Values.size() << " (i.e. more than 1) values.";
-        throw logic_error(msg.str());
+        throw Error(msg.str());
       }
       // build the vector of pointers to X values
       vector<const double*> p(var.Values.size());
@@ -522,7 +517,7 @@ void APLCON::Init()
     const size_t n2 = var2.Values.size();
 
     if(varnames_equal && n1==1) {
-      throw logic_error("Use sigma to define uncertainty of scalar covariance "+cov_name);
+      throw Error("Use sigma to define uncertainty of scalar covariance "+cov_name);
     }
 
     // expected size of the submatrix without diagonal elements (if varnames equal)
@@ -533,7 +528,7 @@ void APLCON::Init()
       msg << "Covariance " << cov_name << " provides " << cov.Values.size()
           << " element" << (cov.Values.size()==1?"":"s") << ", but " << v_n << " covariances needed with"
           << " variable dimensions <" << n1 << "," << n2 << ">";
-      throw logic_error(msg.str());
+      throw Error(msg.str());
     }
 
 
@@ -544,23 +539,39 @@ void APLCON::Init()
     cov.V_ij.reserve(cov.Values.size());
     for(size_t i=0;i<n1;i++) {
       for(size_t j=0;j<n2;j++) {
+
+
+
         // again, handle the special case when varnames are equal
         if(varnames_equal && !(i<j))
           continue;
+
         // also, check if covariance defined for unmeasured variable
         // which is not meaningful, I guess
-        //if()
-        //const double s1 = *(var1.Sigmas[i]);
-        //const double s2 = *(var2.Sigmas[j]);
+        const double s1 = *(var1.Sigmas[i]);
+        const double s2 = *(var2.Sigmas[j]);
+        // calculating the position is different for diagonal/off-diagonal
+        // use V_ij as offset of i x i large matrix
+        const size_t v_ij = varnames_equal ? APLCON_::V_ij(i,i)+j : i*n2+j;
+        // make sure cov.Values entry p is valid,
+        // then see if this covariance connects unmeasured variables
+        const double* p = cov.Values[v_ij];
+        if(APLCON_::V_checkentry(p) &&
+           (s1 == 0.0 || s2 == 0.0)
+           ) {
+          // valid cov entry, but at least one variable is set to "unmeasured"
+          stringstream ss;
+          throw Error("test");
+        }
 
-
+        // V_ij with offsets from corresponding variables
         cov.V_ij.push_back(APLCON_::V_ij(i+var1.XOffset,j+var2.XOffset));
       }
     }
 
     // now, with some properly initialized cov.V_ij for each case,
     // we can fill the non-diagonal values of V
-    APLCON_::transform_to_V(V, cov.Values, cov.V_ij);
+    APLCON_::V_transform(V, cov.Values, cov.V_ij);
   }
 
   // finally we know the number of variables and constraints
