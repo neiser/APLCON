@@ -55,7 +55,8 @@ const APLCON::Result_t APLCON::Result_t::Default = {
   -1,
   -1,
   {},
-  {}
+  {},
+  -1
 };
 
 // simple AddVariable methods

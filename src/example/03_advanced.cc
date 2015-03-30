@@ -60,6 +60,7 @@ int main() {
   auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
   APLCON::Variable_Settings_t fixvar = APLCON::Variable_Settings_t::Default;
   fixvar.StepSize = 0;
+  fixvar.Limit.High = 5000;
   a.LinkVariable("Vec1_E", linker_E(vec1a), sigma1);
   a.LinkVariable("Vec1_p", linker_p(vec1a), sigma1);
   a.LinkVariable("Vec2_E", linker_E(vec2a), sigma2, {fixvar});
@@ -80,9 +81,9 @@ int main() {
   // the convention for symmetric covariance matrix is: rows<columns,
   // and variable names according to "first row index, then column index")
 
-  const double E_px = 0.001;
-  const double E_py = 0.002;
-  const double E_pz = 0.003;
+  constexpr double E_px = 0.001;
+  constexpr double E_py = 0.002;
+  constexpr double E_pz = 0.003;
   a.SetCovariance("Vec1_E", "Vec2_p", // variables give 1 row and 3 columns
                   vector<double>{
                     E_px, E_py, E_pz
@@ -94,9 +95,9 @@ int main() {
   // EXAMPLE (2): covariances for vector-valued variable Vec1_p,
   // which---interpreted as momentum---can have covariances pypx, pzpx, pzpy
 
-  const double pypx = 0.004;
-  const double pzpx = 0.005;
-  const double pzpy = 0.006;
+  constexpr double pypx = 0.004;
+  constexpr double pzpx = 0.005;
+  constexpr double pzpy = 0.006;
   // the corresponding covariance matrix is a simple 1-dimensional vector,
   // but interpreted as the part below the diagonal
   // (since the diagonal of the covariance matrix corresponds to sigmas of px, py and pz, which are specified above)
@@ -133,7 +134,7 @@ int main() {
   // in case of (3), (4) the provided constraint aggregates several scalar constraints into one function
 
   // example for case (2)
-  auto invariant_mass = [] (const vector<double>& E, const vector<double>& p) -> double {
+  constexpr auto invariant_mass = [] (const vector<double>& E, const vector<double>& p) -> double {
     // note that, although E is a scalar variable,
     // it is provided as a vector with one element
     // (mixing scalar/vector arguments are not supported at the moment)
@@ -145,7 +146,7 @@ int main() {
   a.AddConstraint("invariant_mass2", {"Vec2_E", "Vec2_p"}, invariant_mass);
 
   // example for case (4)
-  auto opposite_momentum_3 = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
+  constexpr auto opposite_momentum_3 = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
     // one may check that the vectors a, b have the appropiate lengths
     // that's something the interface can't do for you...
     return {
@@ -159,7 +160,7 @@ int main() {
 
   // to make the fit at least somewhat meaningful, provide the four-momentum conservation,
   // so Vec1+Vec2=Vec3 aka Vec1+Vec2-Vec3 = 0
-  auto require_conservation = [] (
+  constexpr auto require_conservation = [] (
       const vector<double>& v1_E,
       const vector<double>& v1_p,
       const vector<double>& v2_E,
@@ -193,7 +194,7 @@ int main() {
   Vec vec3b = vec3a;
 
   // for instance b, we link all 4 components at once
-  auto linker4   = [] (Vec& v) -> vector<double*> { return {&v.E, &v.px, &v.py, &v.pz}; };
+  constexpr auto linker4   = [] (Vec& v) -> vector<double*> { return {&v.E, &v.px, &v.py, &v.pz}; };
   b.LinkVariable("Vec1", linker4(vec1b), sigma1);
   b.LinkVariable("Vec2", linker4(vec2b), sigma2);
   b.LinkVariable("Vec3", linker4(vec3b), sigma3);
@@ -202,7 +203,7 @@ int main() {
 
   // covariances can contain NaN to indicate that they should be kept 0 (so no correlation)
   // can also use APLCON::NaN, which is the identical expression but easier to remember
-  const double NaN = numeric_limits<double>::quiet_NaN();
+  constexpr double NaN = numeric_limits<double>::quiet_NaN();
 
   // we show here how to link covariances.
   // In case you want to set those linked covariances to 0, provide nullptr instead of NaN

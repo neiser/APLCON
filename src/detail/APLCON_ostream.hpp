@@ -3,6 +3,7 @@
 
 #include "APLCON.hpp"
 
+#include <cmath>
 #include <string>
 #include <ostream>
 #include <iomanip>
@@ -16,7 +17,22 @@ std::string APLCON::PrintFormatting::Indent = "   ";
 std::string APLCON::PrintFormatting::Marker = ">> ";
 int APLCON::PrintFormatting::Width = 13;
 
+
+// some helper string stream which copies the 
+// formatting "settings" of the given base stream
+class mystringstream : public std::stringstream {
+public:
+  mystringstream(const std::ios_base& base) :
+    std::stringstream() {
+    precision(base.precision());
+    flags(base.flags());
+  }
+};
+
 std::ostream& operator<< (std::ostream& o, const APLCON::Limit_t& l) {
+  if(!std::isfinite(l.Low) && !std::isfinite(l.High)) {
+    return o << "(nolimits)";
+  }
   return o << "(" << l.Low << ", " << l.High << ")";
 }
 
@@ -67,6 +83,19 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
   }
 
   return o;
+}
+
+std::ostream& operator<< (std::ostream& o, const APLCON::Variable_Settings_t& s) {
+  mystringstream limit(o); // inherit the format properties of o 
+  limit << s.Limit;
+  mystringstream stepsize(o); // inherit the format properties of o 
+  if(std::isfinite(s.StepSize))
+    stepsize << s.StepSize;
+  return o << std::left 
+           << std::setw(11) << s.Distribution // longest distribution name is 10
+           << std::setw(15) << limit.str()    
+           << std::setw(10) << (s.StepSize==0 ? "fixed" : stepsize.str()) 
+           << std::right;
 }
 
 template<typename F>
@@ -129,22 +158,26 @@ void stringify_variables(
   const int w = APLCON::PrintFormatting::Width;
   const std::string& in = extra_indent + APLCON::PrintFormatting::Indent;
   const std::string& ma = extra_indent + APLCON::PrintFormatting::Marker;
+  
   // print stuff before the Fit
   o << ma << "Before Fit:" << std::endl << std::endl;
   o << in
     << std::left << std::setw(w) << "Name" << std::right
     << std::setw(w)   << "Value"
     << std::setw(w)   << "Sigma"
-    << std::left << std::setw(2*w) << "   Settings" << std::right
+    << std::left      << "   Settings" << std::right
     << std::endl;
   for(const APLCON::Result_Variable_t& v : variables) {
-    std::stringstream settings;
-    settings << "   " << v.Settings.Distribution << " " << v.Settings.Limit << " " << v.Settings.StepSize;
+    mystringstream sigma(o);
+    if(v.Sigma.Before != 0)
+      sigma << v.Sigma.Before;
+    else
+      sigma << "unmeas";
     o << in
       << std::left << std::setw(w) << v.Name << std::right
       << std::setw(w) << v.Value.Before
-      << std::setw(w) << v.Sigma.Before
-      << std::left << std::setw(2*w) << settings.str() << std::right
+      << std::setw(w) << sigma.str()
+      << std::left << "   " << v.Settings << std::right
       << std::endl;
   }
   o << std::endl;
