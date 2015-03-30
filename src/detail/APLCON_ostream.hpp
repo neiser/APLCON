@@ -190,7 +190,7 @@ void stringify_variables(
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;},
                         true);
-
+  o << std::endl;
   o << in << "Correlations (in %): " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;},
@@ -222,7 +222,7 @@ void stringify_variables(
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;},
                         false);
-
+  o << std::endl;
   o << in << "Correlations (in %): " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;},

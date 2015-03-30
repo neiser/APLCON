@@ -177,12 +177,13 @@ public:
                     const std::vector<Variable_Settings_t>& settings = {}
       );
 
+
+  void SetCovariance(const std::string& var1, const std::string& var2,
+                     const std::vector<double>& covariances);
   void SetCovariance(const std::string& var1, const std::string& var2,
                      const double covariance);
-  void SetCovariance(const std::string& var1, const std::string& var2,
-                     const std::vector<double>& covariance);
-  void SetCovariance(const std::string& var1, const std::string& var2,
-                     const std::vector<double*>& covariance);
+  void LinkCovariance(const std::string& var1, const std::string& var2,
+                      const std::vector<double*>& covariances);
 
 
   /**

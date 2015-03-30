@@ -189,22 +189,22 @@ void APLCON::SetCovariance(const std::string& var1,
 }
 void APLCON::SetCovariance(const std::string& var1,
                            const std::string& var2,
-                           const std::vector<double>& covariance) {
+                           const std::vector<double>& covariances) {
   auto it = MakeCovarianceEntry(var1, var2);
-  if(covariance.empty()) {
+  if(covariances.empty()) {
     throw Error("Empty covariance values given");
   }
-  it->second.StoredValues = covariance;
+  it->second.StoredValues = covariances;
 }
 
-void APLCON::SetCovariance(const std::string& var1,
+void APLCON::LinkCovariance(const std::string& var1,
                            const std::string& var2,
-                           const std::vector<double*>& covariance) {
+                           const std::vector<double*>& covariances) {
   auto it = MakeCovarianceEntry(var1, var2);
-  if(covariance.empty()) {
+  if(covariances.empty()) {
     throw Error("Empty covariance pointers given");
   }
-  it->second.Values = covariance;
+  it->second.Values = covariances;
 }
 
 APLCON::covariances_t::iterator APLCON::MakeCovarianceEntry(
@@ -540,7 +540,8 @@ void APLCON::Init()
       for(size_t j=0;j<n2;j++) {
 
         // again, handle the special case when varnames are equal
-        if(varnames_equal && !(i<j))
+        //const size_t i_ = varnames_equal ?
+        if(varnames_equal && i<=j)
           continue;
 
         // also, check if covariance defined for unmeasured variable
@@ -550,7 +551,7 @@ void APLCON::Init()
         // calculating the position is different for diagonal/off-diagonal
         // use V_ij as offset of (i-1) x (i-1) large matrix,
         // note that i=j=0 is excluded due to i<j condition
-        const size_t v_ij = varnames_equal ? APLCON_::V_ij(i-1,i-1)+j : i*n2+j;
+        const size_t v_ij = varnames_equal ? APLCON_::V_ij(i-1,j) : i*n2+j;
         // make sure cov.Values entry p is valid,
         // then see if this covariance connects unmeasured variables
         const double* p = cov.Values[v_ij];
@@ -577,7 +578,8 @@ void APLCON::Init()
         }
 
         // V_ij with offsets from corresponding variables
-        cov.V_ij.push_back(APLCON_::V_ij(i+var1.XOffset,j+var2.XOffset));
+        const size_t V_ij = APLCON_::V_ij(var1.XOffset+i,var2.XOffset+j);
+        cov.V_ij.push_back(V_ij);
       }
     }
 

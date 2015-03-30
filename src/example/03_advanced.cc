@@ -2,6 +2,7 @@
 #include <APLCON.hpp>
 #include <limits>
 #include <iomanip>
+#include <functional>
 
 using namespace std;
 
@@ -15,15 +16,6 @@ int main() {
   // please feel free to modify the code here and see
   // if APLCON will throw you a meaningful exception in
   // case you set up something stupid :)
-
-
-  // this example uses rather stupid values for covariances,
-  // so APLCON needs more iterations to converge
-  // have a look at APLCON::Fit_Settings_t to see what can be configured globally
-
-  APLCON::Fit_Settings_t settings = APLCON::Fit_Settings_t::Default;
-  settings.MaxIterations = 500;
-  APLCON a("Fit A", settings);
 
   // as an example structure, we use something
   // which looks like a Lorentz vector
@@ -49,13 +41,22 @@ int main() {
   // third particle is unmeasured, so sigma=0
   const vector<double> sigma3 = {0};
 
+  // #######################################
+  // this example uses rather stupid values for covariances,
+  // so APLCON needs more iterations to converge
+  // have a look at APLCON::Fit_Settings_t to see what can be configured globally
+
+  APLCON::Fit_Settings_t settings = APLCON::Fit_Settings_t::Default;
+  settings.MaxIterations = 500;
+  APLCON a("Fit A", settings);
+
   // you're totally free in
   // how the fields of your data structure are linked
   // you might have also specified the particle by energy, theta and phi
 
   // for instance a, we separate E and p
-  auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
-  auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
+  constexpr auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
+  constexpr auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
   APLCON::Variable_Settings_t fixvar = APLCON::Variable_Settings_t::Default;
   fixvar.StepSize = APLCON::NaN; // set to zero to fix, NaN uses APLCON's default
   a.LinkVariable("Vec1_E", linker_E(vec1a), sigma1);
@@ -117,6 +118,7 @@ int main() {
    0.004, 0.005, 0.006,
    0.007, 0.008, 0.009
   };
+  // note that swapping Vec1_p and Vec2_p would transpose the given matrix
   a.SetCovariance("Vec1_p", "Vec2_p",covariance_matrix_pp);
 
   // #######################################
@@ -196,8 +198,7 @@ int main() {
   b.LinkVariable("Vec2", linker4(vec2b), sigma2);
   b.LinkVariable("Vec3", linker4(vec3b), sigma3);
 
-
-
+  // #######################################
   // covariances can contain NaN to indicate that they should be kept 0 (so no correlation)
   // can also use APLCON::NaN, which is the identical expression but easier to remember
   constexpr double NaN = numeric_limits<double>::quiet_NaN();
@@ -207,24 +208,102 @@ int main() {
 
   // make some space for a linked covariance between Vec1 components
   // set it to the same values as for instance a
-  vector<double> linked_covariance_vec1 = {
+  vector<double> linked_covariance_vec1_vec1 = {
+    NaN,
+    NaN, pypx,
+    NaN, pzpx, pzpy
+  };
+  // then we create the pointers array with some general lambda
+  constexpr auto link_vector = [] (vector<double>& v) {
+    vector<double*> vp;
+    vp.resize(v.size());
+    transform(v.begin(),v.end(),vp.begin(), [] (double& d) {return &d;});
+    return move(vp);
+  };
+  b.LinkCovariance("Vec1", "Vec1", link_vector(linked_covariance_vec1_vec1));
 
+  // now the two SetCovariance calls in example (1) and (3) from above
+  // merge to one for Vec1/Vec2
+  // let's play around with some own data structures to link only some of those values
+
+  // first the three energy-momentum covariances
+  struct cov_Ep_t {
+    double E_px;
+    double E_py;
+    double E_pz;
+  };
+  cov_Ep_t cov_Ep = {E_px, E_py, E_pz}; // init with same values from instance a
+
+  // the 9 momentum/momentum covariances, copied from instance a
+  vector<double>  linked_covariance_vec1p_vec1p = covariance_matrix_pp;
+
+  // two difference 4-vectors can have 16 covariances
+  // but only some are actually linked, the rest is left as nullptr
+  vector<double*> linked_covariance_vec1_vec2(16, nullptr);
+
+  for(size_t i=1;i<4;i++) {
+    for(size_t j=1;j<4;j++) {
+      linked_covariance_vec1_vec2[i*4+j] = &linked_covariance_vec1p_vec1p[(i-1)*3+(j-1)];
+    }
+  }
+  linked_covariance_vec1_vec2[1] = &cov_Ep.E_px;
+  linked_covariance_vec1_vec2[2] = &cov_Ep.E_py;
+  linked_covariance_vec1_vec2[3] = &cov_Ep.E_pz;
+
+  // tell the instance
+  b.LinkCovariance("Vec1","Vec2", linked_covariance_vec1_vec2);
+
+  // #######################################
+  // now the constraints
+  // but we use some nice variants and generalizations again
+
+  // lambdas can catch data from outside
+  constexpr double IM = 0;
+  const auto parametrized_invariant_mass = [IM] (const vector<double>& v) -> double {
+    // M^2 = E^2 - vec(p)^2
+    const double M2 = pow(v[0],2) - pow(v[1],2) - pow(v[2],2) - pow(v[3],2);
+    return M2 - pow(IM,2); // require the invariant mass to be given value IM
   };
 
-  auto equal_vector = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
-    // one should check if sizes of a and b are equal,
-    // again that's something APLCON can't do for you
-    vector<double> r(a.size());
-    for(size_t i=0;i<a.size();i++)
-      r[i] = a[i]-b[i];
-    return r;
-  };
+  b.AddConstraint("invariant_mass1", {"Vec1"}, parametrized_invariant_mass);
+  b.AddConstraint("invariant_mass2", {"Vec2"}, parametrized_invariant_mass);
 
-  // finally, do the fit
+  constexpr auto opposite_momentum_4 = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
+    // one may check that the vectors a, b have the appropiate lengths
+    // that's something the interface can't do for you...
+    return {
+      a[1] + b[1],
+      a[2] + b[2],
+      a[3] + b[3]
+    }; // returns 3 scalar constraints
+  };
+  b.AddConstraint("opposite_momentum",{"Vec1","Vec2"}, opposite_momentum_4);
+
+  constexpr auto require_conservation_4 = [] (
+      const vector<double>& v1,
+      const vector<double>& v2,
+      const vector<double>& v3
+      ) -> vector<double> {
+    // this is rather tedious to formulate,
+    // see instance b below for more elegant solution
+    return {
+      v1[0] + v2[0] - v3[0],
+      v1[0] + v2[0] - v3[0],
+      v1[1] + v2[1] - v3[1],
+      v1[2] + v2[2] - v3[2]
+    };
+  };
+  b.AddConstraint("require_conservation",
+                  {"Vec1","Vec2","Vec3"},
+                  require_conservation_4);
+
+
+  // finally, do the fits, they should give identical results
   // note that many setup exceptions are only thrown here,
   // because only with a fully setup instance it's possible to check many things
   cout.precision(3); // set precision globally, which makes output nicer
   cout << a.DoFit() << endl;
+  cout << b.DoFit() << endl;
 
   cout << "Please note that the above fit result might not be meaningful due to totally guessed covariances." << endl;
 }
