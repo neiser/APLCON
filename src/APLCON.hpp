@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -237,6 +238,9 @@ public:
     initialized = false;
   }
 
+  // shortcuts for double limits (used in default values for methods above)
+  constexpr static double NaN = std::numeric_limits<double>::quiet_NaN();
+
   // our own exception which is thrown if something's wrong
   class Error : public std::runtime_error {
   public:
@@ -314,8 +318,6 @@ private:
 
   // global APLCON settings
   Fit_Settings_t fit_settings;
-  // shortcuts for double limits (used in default values for methods above)
-  const static double NaN;
 
   // private methods
   void Init();

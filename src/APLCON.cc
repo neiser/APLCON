@@ -23,9 +23,6 @@ using namespace std;
 int APLCON::instance_counter = 0;
 int APLCON::instance_lastfit = 0;
 
-// short NaN is really handy...
-const double APLCON::NaN = numeric_limits<double>::quiet_NaN();
-
 const APLCON::Variable_Settings_t APLCON::Variable_Settings_t::Default = {
   APLCON::Distribution_t::Gaussian,
   {
