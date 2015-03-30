@@ -315,7 +315,7 @@ APLCON::Result_t APLCON::DoFit()
       var.Sigma = {*(before.Sigmas[k]), after_sigma};
 
       // only copy stuff back if variable is not internally stored
-      // which is indicated by an empty store
+      // which is indicated by an empty internal store
       if(before.StoredValues.empty())
         *(before.Values[k]) = X[i];
       if(before.StoredSigmas.empty())
@@ -378,13 +378,12 @@ void APLCON::Init()
     V = V_before;
 
     // copy again the linked variables to X
-    //
     for(const auto& it_map : variables) {
       const variable_t& var = it_map.second;
       auto X_offset = X.begin() + var.XOffset;
       auto dereference = [] (const double* d) {return *d;};
       transform(var.Values.begin(), var.Values.end(), X_offset, dereference);
-      // copy the sigmas to diagonal of V
+      // copy the sigmas to diagonal of V (with additional square operation)
       APLCON_::V_transform(V, var.Sigmas, var.V_ij,
                               [] (double d) {return pow(d,2);});
     }
@@ -410,8 +409,6 @@ void APLCON::Init()
   nVariables = 0;
   X.clear();
   V.clear();
-  X.reserve(2*variables.size()); // best guess, nVariables will be known later
-  V.reserve((X.size() << 1)/2); // another estimate for V's size N^2/2 =~ N*(N+1)/2
   for(auto& it_map : variables) {
     variable_t& var = it_map.second;
     size_t offset = X.size();

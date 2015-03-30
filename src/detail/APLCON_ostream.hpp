@@ -192,7 +192,7 @@ void stringify_variables(
   // print stuff before the Fit
   o << ma << "Before Fit:" << std::endl << std::endl;
   o << in
-    << std::left << std::setw(w) << "Name" << std::right
+    << std::left << std::setw(w) << "Variable" << std::right
     << std::setw(w)   << "Value"
     << std::setw(w)   << "Sigma"
     << std::left      << "   Settings" << std::right
