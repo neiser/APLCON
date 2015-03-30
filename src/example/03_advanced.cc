@@ -249,7 +249,7 @@ int main() {
 
   for(size_t i=1;i<4;i++) {
     for(size_t j=1;j<4;j++) {
-      linked_covariance_vec1_vec2[i*4+j] = &linked_covariance_vec1p_vec1p[(i-1)*3+(j-1)];
+      linked_covariance_vec1_vec2[i*4+j] = addressof(linked_covariance_vec1p_vec1p[(i-1)*3+(j-1)]);
     }
   }
   linked_covariance_vec1_vec2[1] = addressof(cov_Ep.E_px);
@@ -301,7 +301,6 @@ int main() {
     return result;
   };
 
-
   b.AddConstraint("require_conservation",
                   {"Vec3","Vec1","Vec2"}, // note that Vec3 goes first, because Vec3=Vec1+Vec2
                   require_conservation_4);
@@ -313,6 +312,9 @@ int main() {
   cout.precision(3); // set precision globally, which makes output nicer
   cout << a.DoFit() << endl;
   cout << b.DoFit() << endl;
+
+  // test the linkage
+  cout << "+++++ Covariance Vec1/Vec2 E/pz = " << cov_Ep.E_pz << endl;
 
   cout << "Please note that the above fit result might not be meaningful due to totally guessed covariances." << endl;
 }

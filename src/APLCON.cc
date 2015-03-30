@@ -355,6 +355,20 @@ APLCON::Result_t APLCON::DoFit()
     }
   }
 
+  for(const auto& it_map : covariances) {
+    const covariance_t& cov = it_map.second;
+    // don't copy back internally stored values
+    if(!cov.StoredValues.empty())
+      continue;
+    for(size_t i=0;i<cov.Values.size();i++) {
+      double* p = cov.Values[i];
+      // not all covariances might be linked
+      if(p==nullptr)
+        continue;
+      *p = V[cov.V_ij[i]];
+    }
+  }
+
   // copy just the names of the constraints
   for(const auto& it_map : constraints) {
     Result_Constraint_t r_con;
