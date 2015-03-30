@@ -12,7 +12,7 @@ namespace APLCON_ {
 
 template<typename T>
 T* make_pointer(T& t) {
-  return &t;
+  return std::addressof(t);
 }
 
 template <typename T>

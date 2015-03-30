@@ -32,7 +32,9 @@ int main() {
   // so we define some handy little function which converts instances of BF_t
   // note that linker needs an explicit return type declaration " -> vector<double*> "
   // since we use an initializer_list { }
-  auto linker = [] (BF_t& v) -> vector<double*> { return {&v.A, &v.B}; };
+  auto linker = [] (BF_t& v) -> vector<double*> {
+    return {addressof(v.A), addressof(v.B)}; // vector of two double*
+  };
 
   a.LinkVariable("BF_tau",       // name
                  linker(BF_tau), // give double* vector

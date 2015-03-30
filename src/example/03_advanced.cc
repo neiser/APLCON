@@ -55,8 +55,12 @@ int main() {
   // you might have also specified the particle by energy, theta and phi
 
   // for instance a, we separate E and p
-  constexpr auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
-  constexpr auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
+  constexpr auto linker_E = [] (Vec& v) -> vector<double*> {
+    return {addressof(v.E)};
+  };
+  constexpr auto linker_p = [] (Vec& v) -> vector<double*> {
+    return {addressof(v.px), addressof(v.py), addressof(v.pz)};
+  };
   APLCON::Variable_Settings_t fixvar = APLCON::Variable_Settings_t::Default;
   fixvar.StepSize = APLCON::NaN; // set to zero to fix, NaN uses APLCON's default
   a.LinkVariable("Vec1_E", linker_E(vec1a), sigma1);
@@ -193,7 +197,9 @@ int main() {
   Vec vec3b = vec3a;
 
   // for instance b, we link all 4 components at once
-  constexpr auto linker4   = [] (Vec& v) -> vector<double*> { return {&v.E, &v.px, &v.py, &v.pz}; };
+  constexpr auto linker4   = [] (Vec& v) -> vector<double*> {
+    return {addressof(v.E), addressof(v.px), addressof(v.py), addressof(v.pz)};
+  };
   b.LinkVariable("Vec1", linker4(vec1b), sigma1);
   b.LinkVariable("Vec2", linker4(vec2b), sigma2);
   b.LinkVariable("Vec3", linker4(vec3b), sigma3);
