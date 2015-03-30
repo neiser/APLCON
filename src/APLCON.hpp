@@ -219,13 +219,16 @@ public:
     // compile-time check if the Function wants only double's, or only vector of double's
     // both bool's can never be true at the same time,
     // so we require an exclusive or
+    constexpr size_t n = trait::arity; // number of arguments in Functor
     constexpr bool wants_double = trait::template all_args<double>::value;
     constexpr bool wants_vector = trait::template all_args< std::vector<double> >::value;
-    static_assert(wants_double ^ wants_vector, "Constraint function does not solely want double or solely vector<double>.");
+    constexpr bool wants_matrix = n==1 && trait::template all_args< std::vector< std::vector<double> > >::value;
+    static_assert(wants_double + wants_vector + wants_matrix == 1,
+                  "Constraint function does not either take double's, or vector<double>'s, or single vector<vector<double>> (matrix) as argument(s).");
+
 
     // runtime check if given variable number matches to Functor
-    constexpr size_t n = trait::arity; // number of arguments in Functor
-    if(varnames.size() != n) {
+    if(!wants_matrix && varnames.size() != n) {
       std::stringstream msg;
       msg << "Constraint '" << name << "': Function argument number (" << n <<
              ") does not match the number of provided varnames (" << varnames.size() << ")";
@@ -236,6 +239,7 @@ public:
     // implementation
     const auto& bound = bind_constraint<returns_double>
         (std::enable_if<wants_double>(),
+         std::enable_if<wants_vector>(),
          constraint, APLCON_::build_indices<n>{});
 
     constraints[name] = {varnames, bound, wants_double, 0};
@@ -382,23 +386,26 @@ private:
 
   template <bool R, typename F, size_t... I>
   constraint_function_t
-  bind_constraint(std::enable_if<true>, // wants_double
+  bind_constraint(std::enable_if<true>,  // wants double
+                  std::enable_if<false>, // does not want vector
                   const F& f, APLCON_::indices<I...>) const {
     auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // dereference the single element inside the inner vector
       // return vector with single element
       return APLCON_::vectorize_if<R>::get(f(*(x[I][0])...));
     };
-    return std::move(std::bind(f_wrap, f, std::placeholders::_1));
+    return std::bind(f_wrap, f, std::placeholders::_1);
   }
 
   template <bool R, typename F, size_t... I>
   constraint_function_t
-  bind_constraint(std::enable_if<false>, // wants vector
+  bind_constraint(std::enable_if<false>, // does not want double
+                  std::enable_if<true>,  // wants vector
                   const F& f, APLCON_::indices<I...>) const {
     auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // this might be a little bit inefficient,
       // since we need to allocate the space for the dereferenced double values
+      // but well, the constraints then look easier
       std::vector< std::vector<double> > x_(sizeof...(I));
       for(size_t i=0;i<sizeof...(I);i++) {
         x_[i].resize(x[i].size());
@@ -409,7 +416,29 @@ private:
       }
       return APLCON_::vectorize_if<R>::get(f(std::move(x_[I])...));
     };
-    return std::move(std::bind(f_wrap, f, std::placeholders::_1));
+    return std::bind(f_wrap, f, std::placeholders::_1);
+  }
+
+  template <bool R, typename F, size_t... I>
+  constraint_function_t
+  bind_constraint(std::enable_if<false>, // does not want double
+                  std::enable_if<false>, // does not want vector, so wants matrix!
+                  const F& f, APLCON_::indices<I...>) const {
+    auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+      // this might be a little bit inefficient,
+      // since we need to allocate the space for the dereferenced double values
+      // but well, the constraints then look easier
+      std::vector< std::vector<double> > x_(x.size());
+      for(size_t i=0;i<x.size();i++) {
+        x_[i].resize(x[i].size());
+        std::transform(x[i].begin(), x[i].end(),
+                       x_[i].begin(),
+                       [] (const double* v) { return *v; }
+        );
+      }
+      return APLCON_::vectorize_if<R>::get(f(x_));
+    };
+    return std::bind(f_wrap, f, std::placeholders::_1);
   }
 
 };

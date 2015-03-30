@@ -285,22 +285,25 @@ int main() {
   };
   b.AddConstraint("opposite_momentum",{"Vec1","Vec2"}, opposite_momentum_4);
 
-  constexpr auto require_conservation_4 = [] (
-      const vector<double>& v1,
-      const vector<double>& v2,
-      const vector<double>& v3
-      ) -> vector<double> {
-    // this is rather tedious to formulate,
-    // see instance b below for more elegant solution
-    return {
-      v1[0] + v2[0] - v3[0],
-      v1[0] + v2[0] - v3[0],
-      v1[1] + v2[1] - v3[1],
-      v1[2] + v2[2] - v3[2]
-    };
+  // you may also pass a constraint as a function of a matrix which
+  // has all variable arguments collocated into one vector of vector
+  constexpr auto require_conservation_4 = [] (const vector< vector<double> >& m) -> vector<double> {
+    // assume that m[0] (later assigned to Vec3) is the sum of
+    // the remaining elements m[1..2] (aka Vec1/Vec2)
+    // assume that all vectors inside m have the same size
+    vector<double> result = m[0]; // start with the values of the first vector...
+    // ...and subtract all other vectors
+    for(size_t i=1;i<m.size();i++) {
+      for(size_t j=0;j<m[i].size();j++) {
+        result[j] -= m[i][j];
+      }
+    }
+    return result;
   };
+
+
   b.AddConstraint("require_conservation",
-                  {"Vec1","Vec2","Vec3"},
+                  {"Vec3","Vec1","Vec2"}, // note that Vec3 goes first, because Vec3=Vec1+Vec2
                   require_conservation_4);
 
 
