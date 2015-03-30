@@ -358,7 +358,7 @@ APLCON::Result_t APLCON::DoFit()
   // copy just the names of the constraints
   for(const auto& it_map : constraints) {
     Result_Constraint_t r_con;
-    r_con.Number = it_map.second.Number;
+    r_con.Dimension = it_map.second.Number;
     result.Constraints[it_map.first] = r_con;
   }
   result.NScalarConstraints = nConstraints;

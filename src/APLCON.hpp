@@ -82,7 +82,7 @@ public:
   };
 
   struct Result_Constraint_t {
-    size_t Number;    // how many scalar constraints are represented by it
+    size_t Dimension;    // how many scalar constraints are represented by it
   };
 
   struct Result_t {
@@ -118,6 +118,8 @@ public:
     instance_name = _name;
     fit_settings  = _fit_settings;
   }
+
+
 
   /**
    * @brief DoFit main routine
@@ -259,6 +261,12 @@ public:
   };
 
 private:
+
+  // instances should be copied so easily
+  // you're required to give the new instance a name
+  // (which is hopefully different to the one before)
+  APLCON(const APLCON&) = default;
+  APLCON& operator= (const APLCON& other) = delete;
 
   struct variable_t {
     std::vector<double*> Values;

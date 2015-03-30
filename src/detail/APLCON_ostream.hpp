@@ -280,8 +280,8 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_t& r) {
     const auto& it_map = it_zipped.second;
     const APLCON::Result_Constraint_t& c = it_map.second;
     o << it_map.first;
-    if(c.Number>1)
-      o << "[" << c.Number << "]";
+    if(c.Dimension>1)
+      o << "[" << c.Dimension << "]";
     if(i < r.Constraints.size()-1)
       o << ", ";
   }
