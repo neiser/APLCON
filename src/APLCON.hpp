@@ -70,18 +70,19 @@ public:
   };
 
   struct Result_Variable_t {
-    std::string Name;
+    std::string Name; // pristine name, i.e. without appended "[i]"
+    size_t Dimension; // dimension of vector variable, =1 for scalar variable
+    size_t Index;     // index inside vector variable, =0 for scalar variable
     Result_BeforeAfter_t<double> Value;
     Result_BeforeAfter_t<double> Sigma;
-    Result_BeforeAfter_t< std::vector<double> > Covariances;
-    Result_BeforeAfter_t< std::vector<double> > Correlations;
+    Result_BeforeAfter_t< std::map<std::string, double> > Covariances;
+    Result_BeforeAfter_t< std::map<std::string, double> > Correlations;
     double Pull;
     Variable_Settings_t Settings;
   };
 
   struct Result_Constraint_t {
-    std::string Name;
-    size_t Number;    // how many scalar constraints are represented
+    size_t Number;    // how many scalar constraints are represented by it
   };
 
   struct Result_t {
@@ -92,8 +93,8 @@ public:
     double Probability;
     int NIterations;
     int NFunctionCalls;
-    std::vector<Result_Variable_t> Variables;
-    std::vector<Result_Constraint_t> Constraints;
+    std::map<std::string, Result_Variable_t>   Variables;
+    std::map<std::string, Result_Constraint_t> Constraints;
     int NScalarConstraints;
     const static Result_t Default;
   };

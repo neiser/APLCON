@@ -217,7 +217,7 @@ int main() {
   constexpr auto link_vector = [] (vector<double>& v) {
     vector<double*> vp;
     vp.resize(v.size());
-    transform(v.begin(),v.end(),vp.begin(), [] (double& d) {return &d;});
+    transform(v.begin(),v.end(),vp.begin(), [] (double& d) {return addressof(d);});
     return move(vp);
   };
   b.LinkCovariance("Vec1", "Vec1", link_vector(linked_covariance_vec1_vec1));
@@ -246,9 +246,9 @@ int main() {
       linked_covariance_vec1_vec2[i*4+j] = &linked_covariance_vec1p_vec1p[(i-1)*3+(j-1)];
     }
   }
-  linked_covariance_vec1_vec2[1] = &cov_Ep.E_px;
-  linked_covariance_vec1_vec2[2] = &cov_Ep.E_py;
-  linked_covariance_vec1_vec2[3] = &cov_Ep.E_pz;
+  linked_covariance_vec1_vec2[1] = addressof(cov_Ep.E_px);
+  linked_covariance_vec1_vec2[2] = addressof(cov_Ep.E_py);
+  linked_covariance_vec1_vec2[3] = addressof(cov_Ep.E_pz);
 
   // tell the instance
   b.LinkCovariance("Vec1","Vec2", linked_covariance_vec1_vec2);

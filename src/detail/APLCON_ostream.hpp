@@ -7,6 +7,7 @@
 #include <string>
 #include <ostream>
 #include <iomanip>
+#include <iterator>
 #include <stdexcept>
 #include <sstream>
 #include <vector>
@@ -103,7 +104,7 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Variable_Settings_t& s)
 template<typename F>
 void stringify_covariances(
     std::ostream& o,
-    const std::vector<APLCON::Result_Variable_t>& variables,
+    const std::map<std::string, APLCON::Result_Variable_t>& variables,
     const std::string& in,
     F f,
     bool skipUnmeasured,
@@ -112,9 +113,13 @@ void stringify_covariances(
 
   const int w = APLCON::PrintFormatting::Width;
   const int w_varname = APLCON::PrintFormatting::Width;
+
+  // print top line
   o << in << std::setw(w_varname) << " ";
-  for(size_t i=0;i<variables.size();i++) {
-    const APLCON::Result_Variable_t& v = variables[i];
+  for(const auto& it_zipped : APLCON_::index(variables)) {
+    const size_t i = it_zipped.first;
+    const auto& it_map = it_zipped.second;
+    const APLCON::Result_Variable_t& v = it_map.second;
     if(skipUnmeasured && v.Sigma.Before == 0)
       continue;
     std::stringstream i_;
@@ -122,29 +127,50 @@ void stringify_covariances(
     o << std::setw(w) << i_.str();
   }
   o << std::endl;
-  for(size_t i=0;i<variables.size();i++) {
-    const APLCON::Result_Variable_t& v = variables[i];
+
+  // print matrix
+
+  std::vector<APLCON::Result_Variable_t> v_variables;
+
+  for(const auto& it_zipped : APLCON_::index(variables)) {
+    const size_t i = it_zipped.first;
+    const auto& it_map = it_zipped.second;
+    const APLCON::Result_Variable_t& v = it_map.second;
+
+    v_variables.emplace_back(v);
+
     if(skipUnmeasured && v.Sigma.Before == 0)
       continue;
+
     std::stringstream i_;
     const size_t padding = i<10 ? 0 : 1; // breaks with more than 100 variables...
     i_ << i << ") ";
     o << in << std::setw(4-padding) << i_.str()
-      << std::left << std::setw(w_varname-4) << v.Name << std::right;
-    const std::vector<double>& cov = f(v);
-    for(size_t j=0;j<cov.size();j++) {
+      << std::left << std::setw(w_varname-4) << it_map.first << std::right;
+
+    const auto& cov = f(v);
+    for(const auto& it_zipped : APLCON_::index(cov)) {
+      const size_t j = it_zipped.first;
+      const auto& it_map = it_zipped.second;
+      const double& cov = it_map.second;
+
       if(j>i)
         continue;
-      const APLCON::Result_Variable_t& v_j = variables[j];
+
+      const APLCON::Result_Variable_t& v_j = v_variables[j];
       if(skipUnmeasured && v_j.Sigma.Before == 0)
         continue;
-      o << std::setw(w) << cov[j]*factor;
+      o << std::setw(w) << cov*factor;
     }
     o << std::endl;
   }
+
+  // print bottom line
   o << in << std::setw(w_varname) << " ";
-  for(size_t i=0;i<variables.size();i++) {
-    const APLCON::Result_Variable_t& v = variables[i];
+  for(const auto& it_zipped : APLCON_::index(variables)) {
+    const size_t i = it_zipped.first;
+    const auto& it_map = it_zipped.second;
+    const APLCON::Result_Variable_t& v = it_map.second;
     if(skipUnmeasured && v.Sigma.Before == 0)
       continue;
     std::stringstream i_;
@@ -156,7 +182,7 @@ void stringify_covariances(
 
 void stringify_variables(
     std::ostream& o,
-    const std::vector<APLCON::Result_Variable_t>& variables,
+    const std::map<std::string, APLCON::Result_Variable_t>& variables,
     const std::string& extra_indent = "",
     const bool success = true) {
   const int w = APLCON::PrintFormatting::Width;
@@ -171,14 +197,15 @@ void stringify_variables(
     << std::setw(w)   << "Sigma"
     << std::left      << "   Settings" << std::right
     << std::endl;
-  for(const APLCON::Result_Variable_t& v : variables) {
+  for(const auto& it_map : variables) {
+    const APLCON::Result_Variable_t& v = it_map.second;
     mystringstream sigma(o);
     if(v.Sigma.Before != 0)
       sigma << v.Sigma.Before;
     else
       sigma << "unmeas";
     o << in
-      << std::left << std::setw(w) << v.Name << std::right
+      << std::left << std::setw(w) << it_map.first << std::right
       << std::setw(w) << v.Value.Before
       << std::setw(w) << sigma.str()
       << std::left << "   " << v.Settings << std::right
@@ -208,9 +235,10 @@ void stringify_variables(
     << std::setw(w) << "Sigma"
     << std::setw(w) << "Pull"
     << std::endl;
-  for(const APLCON::Result_Variable_t& v : variables) {
+  for(const auto& it_map : variables) {
+    const APLCON::Result_Variable_t& v = it_map.second;
     o << in
-      << std::left << std::setw(w) << v.Name << std::right
+      << std::left << std::setw(w) << it_map.first << std::right
       << std::setw(w) << v.Value.After
       << std::setw(w) << v.Sigma.After
       << std::setw(w) << v.Pull
@@ -246,9 +274,12 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_t& r) {
   o << in << "Chi^2 / DoF = " << r.ChiSquare << " / " << r.NDoF << " = " << r.ChiSquare/r.NDoF << std::endl;
   o << in << "Probability = " << r.Probability << std::endl;
   o << in << "Constraints: ";
-  for(size_t i=0;i<r.Constraints.size();i++) {
-    const APLCON::Result_Constraint_t& c = r.Constraints[i];
-    o << c.Name;
+
+  for(const auto& it_zipped : APLCON_::index(r.Constraints)) {
+    const size_t i = it_zipped.first;
+    const auto& it_map = it_zipped.second;
+    const APLCON::Result_Constraint_t& c = it_map.second;
+    o << it_map.first;
     if(c.Number>1)
       o << "[" << c.Number << "]";
     if(i < r.Constraints.size()-1)

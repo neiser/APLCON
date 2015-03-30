@@ -293,7 +293,6 @@ APLCON::Result_t APLCON::DoFit()
   // now we're ready to fill the result.Variables vector
   // we fill it in the same order as the X vector
   // which makes debug output from  APLCON comparable to dumps of this structure
-  result.Variables.reserve(X.size());
 
   for(const auto& it_map : variables) {
     const string& name = it_map.first;
@@ -303,13 +302,16 @@ APLCON::Result_t APLCON::DoFit()
       size_t i = before.XOffset+k;
 
       Result_Variable_t var;
-      var.Name = APLCON_::BuildVarName(name, before.Values.size(), k);
+      const string& varname = APLCON_::BuildVarName(name, before.Values.size(), k);
+      var.Name = name;
+      var.Dimension = before.Values.size();
+      var.Index = k;
       var.Value = {*(before.Values[k]), X[i]};
 
       // pow/sqrt of covariance is actually the only calcution the wrapper does
       // the rest is done by APLCON...
-      const size_t V_i = APLCON_::V_ij(i,i);
-      const double after_sigma = sqrt(V[V_i]);
+      const size_t V_ii = APLCON_::V_ij(i,i);
+      const double after_sigma = sqrt(V[V_ii]);
       var.Sigma = {*(before.Sigmas[k]), after_sigma};
 
       // only copy stuff back if variable is not internally stored
@@ -320,26 +322,28 @@ APLCON::Result_t APLCON::DoFit()
         *(before.Sigmas[k]) = after_sigma;
 
       // copy the covariances, respecting that V is symmetrized
-      var.Covariances.Before.resize(X.size());
-      var.Covariances.After.resize(X.size());
-      for(size_t j=0; j<X.size(); j++) {
-        const size_t V_ij = APLCON_::V_ij(i,j);
-        var.Covariances.Before[j] = V_before[V_ij];
-        var.Covariances.After[j]  = V[V_ij];
-      }
+      for(const auto& it_map_ : variables) {
+        const string& name_ = it_map_.first;
+        const variable_t& before_ = it_map_.second;
 
-      // calculate the correlations (after building the full covariance matrix),
-      // because APLCON does not provide them (only print methods available)
-      var.Correlations.Before.resize(X.size());
-      var.Correlations.After.resize(X.size());
-      for(size_t j=0; j<X.size(); j++) {
-        const size_t V_ij = APLCON_::V_ij(i,j);
-        const size_t V_ii = APLCON_::V_ij(i,i);
-        const size_t V_jj = APLCON_::V_ij(j,j);
-        const double prod_before = V_before[V_ii] * V_before[V_jj];
-        const double prod = V[V_ii] * V[V_jj];
-        var.Correlations.Before[j] = V_before[V_ij]/sqrt(prod_before);
-        var.Correlations.After[j]  = V[V_ij]/sqrt(prod);
+        for(size_t k_=0;k_<before_.Values.size();k_++) {
+          size_t j = before_.XOffset+k_;
+
+          const string& varname_ = APLCON_::BuildVarName(name_, before_.Values.size(), k_);
+
+          const size_t V_ij = APLCON_::V_ij(i,j);
+          const size_t V_jj = APLCON_::V_ij(j,j);
+
+          var.Covariances.Before[varname_] = V_before[V_ij];
+          var.Covariances.After[varname_]  = V[V_ij];
+
+          // calculate the correlations,
+          // because APLCON does not provide them (only print methods available)
+          const double prod_before = V_before[V_ii] * V_before[V_jj];
+          const double prod = V[V_ii] * V[V_jj];
+          var.Correlations.Before[varname_] = V_before[V_ij]/sqrt(prod_before);
+          var.Correlations.After[varname_]  = V[V_ij]/sqrt(prod);
+        }
       }
 
       // anything else
@@ -347,17 +351,15 @@ APLCON::Result_t APLCON::DoFit()
       var.Settings = before.Settings[k];
 
       // iterating over variables should be the right order
-      result.Variables.push_back(move(var));
+      result.Variables[varname] = var;
     }
   }
 
   // copy just the names of the constraints
-  result.Constraints.reserve(constraints.size());
-  for(const auto& c : constraints) {
-    Result_Constraint_t con;
-    con.Name = c.first;
-    con.Number = c.second.Number;
-    result.Constraints.emplace_back(con);
+  for(const auto& it_map : constraints) {
+    Result_Constraint_t r_con;
+    r_con.Number = it_map.second.Number;
+    result.Constraints[it_map.first] = r_con;
   }
   result.NScalarConstraints = nConstraints;
   result.Name = instance_name;

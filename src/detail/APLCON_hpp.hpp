@@ -102,7 +102,7 @@ struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
 
 // this little template fun is called "pack of indices"
 // it enables the nice definition of constraints via AddConstraint(...) method
-// see http://stackoverflow.com/questions/11044504/any-solution-to-unpack-a-vector-to-function-arguments-in-c
+// see http://stackoverflow.com/a/11044592
 // and http://loungecpp.wikidot.com/tips-and-tricks%3aindices
 template <std::size_t... Is>
 struct indices {};
@@ -112,6 +112,7 @@ struct build_indices : build_indices<N-1, N-1, Is...> {};
 
 template <std::size_t... Is>
 struct build_indices<0, Is...> : indices<Is...> {};
+
 
 } // end namespace APLCON_
 

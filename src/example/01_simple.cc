@@ -53,7 +53,16 @@ int main() {
   const APLCON::Result_t& r = a.DoFit();
   cout << "== No Correlation" << endl;
   cout << r << endl;
+
+  // just as some example how to access results
+  // but see also the other examples how to link to fit data
+  const APLCON::Result_Variable_t& BF_tau_B = r.Variables.at("BF_tau_B");
+  cout << "~~~ BF_tau_B: Pull:            " << BF_tau_B.Pull        << endl;
+  cout << "~~~ BF_tau_B: Sigma after fit: " << BF_tau_B.Sigma.After << endl;
+
+  // with lepton universality
   cout << b.DoFit() << endl;
+
 
   // positive correlation for same observable
   a.SetCovariance("BF_e_A", "BF_e_B", 0.45e-4);
@@ -91,7 +100,6 @@ int main() {
   cout << "== negative correlation, different observable" << endl;
   cout << a.DoFit() << endl;
   cout << b.DoFit() << endl;
-
 
   return 0;
 }
