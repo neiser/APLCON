@@ -23,6 +23,7 @@ int main() {
 
   APLCON::Fit_Settings_t settings = APLCON::Fit_Settings_t::Default;
   settings.MaxIterations = 500;
+  settings.DebugLevel = 5;
 
   APLCON a("Fit A", settings);
 
@@ -57,9 +58,11 @@ int main() {
   // for instance a, we separate E and p
   auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
   auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
+  APLCON::Variable_Settings_t fixvar = APLCON::Variable_Settings_t::Default;
+  fixvar.StepSize = 0;
   a.LinkVariable("Vec1_E", linker_E(vec1a), sigma1);
   a.LinkVariable("Vec1_p", linker_p(vec1a), sigma1);
-  a.LinkVariable("Vec2_E", linker_E(vec2a), sigma2);
+  a.LinkVariable("Vec2_E", linker_E(vec2a), sigma2, {fixvar});
   a.LinkVariable("Vec2_p", linker_p(vec2a), sigma2);
   a.LinkVariable("Vec3_E", linker_E(vec3a), sigma3);
   a.LinkVariable("Vec3_p", linker_p(vec3a), sigma3);
@@ -138,7 +141,8 @@ int main() {
     const double M2 = pow(E[0],2) - pow(p[0],2) - pow(p[1],2) - pow(p[2],2);
     return M2; // require the invariant mass to be zero
   };
-  a.AddConstraint("invariant_mass", {"Vec1_E", "Vec1_p"}, invariant_mass);
+  a.AddConstraint("invariant_mass1", {"Vec1_E", "Vec1_p"}, invariant_mass);
+  a.AddConstraint("invariant_mass2", {"Vec2_E", "Vec2_p"}, invariant_mass);
 
   // example for case (4)
   auto opposite_momentum_3 = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
@@ -210,7 +214,8 @@ int main() {
   };
 
   auto equal_vector = [] (const vector<double>& a, const vector<double>& b) -> vector<double> {
-    // one should check if sizes of a and b are equal
+    // one should check if sizes of a and b are equal,
+    // again that's something APLCON can't do for you
     vector<double> r(a.size());
     for(size_t i=0;i<a.size();i++)
       r[i] = a[i]-b[i];

@@ -593,7 +593,7 @@ void APLCON::Init()
 
   c_aplcon_aplcon(nVariables, nConstraints);
 
-  c_aplcon_aprint(0,fit_settings.DebugLevel); // default output on LUNP 0
+  c_aplcon_aprint(0,fit_settings.DebugLevel); // default output on LUNP 0 (whatever that means)
   if(isfinite(fit_settings.ConstraintAccuracy))
     c_aplcon_apdeps(fit_settings.ConstraintAccuracy);
   if(fit_settings.MaxIterations>=0)
@@ -609,7 +609,7 @@ void APLCON::Init()
     const variable_t& var = it_var.second;
     for(size_t j=0;j<var.Settings.size();j++) {
       const Variable_Settings_t& s = var.Settings[j];
-      int i = j+var.XOffset;
+      const int i = j+var.XOffset+1; // APLCON/Fortran starts counting at 1
       // setup APLCON variable specific things
       switch (s.Distribution) {
       case APLCON::Distribution_t::Gaussian:
