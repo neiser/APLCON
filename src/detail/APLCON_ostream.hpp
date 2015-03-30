@@ -18,7 +18,7 @@ std::string APLCON::PrintFormatting::Marker = ">> ";
 int APLCON::PrintFormatting::Width = 13;
 
 
-// some helper string stream which copies the 
+// some helper string stream which copies the
 // formatting "settings" of the given base stream
 class mystringstream : public std::stringstream {
 public:
@@ -86,15 +86,17 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
 }
 
 std::ostream& operator<< (std::ostream& o, const APLCON::Variable_Settings_t& s) {
-  mystringstream limit(o); // inherit the format properties of o 
+  mystringstream limit(o); // inherit the format properties of o
   limit << s.Limit;
-  mystringstream stepsize(o); // inherit the format properties of o 
+  mystringstream stepsize(o); // inherit the format properties of o
   if(std::isfinite(s.StepSize))
     stepsize << s.StepSize;
-  return o << std::left 
+  else
+    stepsize << "def_stepsize";
+  return o << std::left
            << std::setw(11) << s.Distribution // longest distribution name is 10
-           << std::setw(15) << limit.str()    
-           << std::setw(10) << (s.StepSize==0 ? "fixed" : stepsize.str()) 
+           << std::setw(15) << limit.str()
+           << std::setw(10) << (s.StepSize==0 ? "fixed" : stepsize.str())
            << std::right;
 }
 
@@ -131,6 +133,8 @@ void stringify_covariances(
       << std::left << std::setw(w_varname-4) << v.Name << std::right;
     const std::vector<double>& cov = f(v);
     for(size_t j=0;j<cov.size();j++) {
+      if(j>i)
+        continue;
       const APLCON::Result_Variable_t& v_j = variables[j];
       if(skipUnmeasured && v_j.Sigma.Before == 0)
         continue;
@@ -158,7 +162,7 @@ void stringify_variables(
   const int w = APLCON::PrintFormatting::Width;
   const std::string& in = extra_indent + APLCON::PrintFormatting::Indent;
   const std::string& ma = extra_indent + APLCON::PrintFormatting::Marker;
-  
+
   // print stuff before the Fit
   o << ma << "Before Fit:" << std::endl << std::endl;
   o << in

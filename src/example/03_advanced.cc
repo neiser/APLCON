@@ -23,8 +23,6 @@ int main() {
 
   APLCON::Fit_Settings_t settings = APLCON::Fit_Settings_t::Default;
   settings.MaxIterations = 500;
-  settings.DebugLevel = 5;
-
   APLCON a("Fit A", settings);
 
   // as an example structure, we use something
@@ -59,8 +57,7 @@ int main() {
   auto linker_E = [] (Vec& v) -> vector<double*> { return {&v.E}; };
   auto linker_p = [] (Vec& v) -> vector<double*> { return {&v.px, &v.py, &v.pz}; };
   APLCON::Variable_Settings_t fixvar = APLCON::Variable_Settings_t::Default;
-  fixvar.StepSize = 0;
-  fixvar.Limit.High = 5000;
+  fixvar.StepSize = APLCON::NaN; // set to zero to fix, NaN uses APLCON's default
   a.LinkVariable("Vec1_E", linker_E(vec1a), sigma1);
   a.LinkVariable("Vec1_p", linker_p(vec1a), sigma1);
   a.LinkVariable("Vec2_E", linker_E(vec2a), sigma2, {fixvar});
