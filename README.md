@@ -26,8 +26,3 @@ You'll find some executable examples and a library called `libaplcon++.so`.
 
 Also have a look at the provided [APLCON++ examples code](src/example)
 how to use this interface.
-
-## TODO
-
-  * Implement linked covariances also for linked variables...
-  * Actually test it as a kinfitter
