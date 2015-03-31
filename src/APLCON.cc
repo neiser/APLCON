@@ -97,6 +97,10 @@ void APLCON::AddVariable(const string &name, const double value, const double si
   // check if variable already exists
   CheckMapKey("Variable", name, variables);
 
+  // only allow finite low and high limits
+  if(isfinite(settings.Limit.Low) ^ isfinite(settings.Limit.High)) {
+    throw Error("Variable '"+name+"' does not specify High AND Low limit");
+  }
 
   variable_t var;
   var.StoredValues.emplace_back(value);
