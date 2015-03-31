@@ -21,17 +21,17 @@ int main() {
   auto equality_constraint = [] (double a, double b, double c) { return c - a - b; };
   a.AddConstraint("equality", {"A", "B", "C"}, equality_constraint);
 
-  // do the fit, which is more
+  // do the fit, obtain ra structure
   const APLCON::Result_t& ra = a.DoFit();
   cout << ra << endl;
 
-  cout << "C's value, according to the constraint, should be 30, and it is:     "
+  // this shows what can access in the result structure ra
+  cout << "C's value (should be 30 due to constraint):         "
        << ra.Variables.at("C").Value.After << endl;
-
-
-  cout << "C's sigma, according to error propagation, should be 0.5, and it is: "
-       << ra.Variables.at("C").Sigma.After << endl << endl;
-
+  cout << "C's sigma (should be 0.5 due to error propagation): "
+       << ra.Variables.at("C").Sigma.After << endl;
+  cout << "Correlation between C and B:                        ";
+  cout << 100*ra.Variables.at("C").Correlations.After.at("B") << " %" << endl << endl;
 
   // let's try the same with Poissonian variables
   APLCON b("Poissonian error propagation");
