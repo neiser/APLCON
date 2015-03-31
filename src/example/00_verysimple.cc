@@ -19,7 +19,7 @@ int main() {
   // setup a lambda function which returns 0
   // if C=A+B aka C - A - B = 0 holds
   auto equality_constraint = [] (double a, double b, double c) { return c - a - b; };
-  a.AddConstraint("equality", {"A", "B", "C"}, equality_constraint);
+  a.AddConstraint("A+B=C", {"A", "B", "C"}, equality_constraint);
 
   // do the fit, obtain ra structure
   const APLCON::Result_t& ra = a.DoFit();
@@ -44,7 +44,7 @@ int main() {
 
   b.AddUnmeasuredVariable("C");
 
-  b.AddConstraint("equality", {"A", "B", "C"}, equality_constraint);
+  b.AddConstraint("A+B=C", {"A", "B", "C"}, equality_constraint);
 
   const APLCON::Result_t& rb = b.DoFit();
   cout << rb << endl;
