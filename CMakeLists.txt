@@ -32,6 +32,9 @@ add_library(aplcon++ SHARED
 target_link_libraries(aplcon++ aplcon)
 
 # build some examples
+add_executable(APLCON_example_00 src/example/00_verysimple.cc)
+target_link_libraries(APLCON_example_00 aplcon++)
+
 add_executable(APLCON_example_01 src/example/01_simple.cc)
 target_link_libraries(APLCON_example_01 aplcon++)
 

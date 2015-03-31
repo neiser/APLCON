@@ -150,7 +150,7 @@ public:
    * @param stepSize step size for numerical derivation
    */
   void AddUnmeasuredVariable(const std::string& name,
-                             const double value,
+                             const double value = 0,
                              const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief AddFixedVariable
