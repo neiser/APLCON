@@ -252,10 +252,11 @@ vector<string> APLCON::VariableNames() {
   for(const auto& it_map : variables) {
     const string& name = it_map.first;
     const variable_t& var = it_map.second;
-
-    for(size_t k=0;k<var.Values.size();k++) {
-
-      const string& varname = APLCON_::BuildVarName(name, var.Values.size(), k);
+    // figuring out the number of variables here
+    // is difficult since Values might not be built by Init yet
+    size_t n = var.Values.size()==0 ? var.StoredValues.size() : var.Values.size();
+    for(size_t k=0;k<n;k++) {
+      const string& varname = APLCON_::BuildVarName(name, n, k);
       variableNames.push_back(varname);
     }
   }
@@ -460,16 +461,16 @@ void APLCON::Init()
     nVariables += var.Values.size();
     var.V_ij.resize(var.Values.size());
     for(size_t i=0;i<var.Values.size();i++) {
-      X.push_back(*(var.Values[i])); // copy initial X values
+      X.push_back(*(var.Values[i])); // copy initial values to X
 
       // take care of diagonal elements in V,
       // off diagonal elements are set to zero by resize (see also covariance handling later)
       // this is like a push_back but with some padding in between
       const size_t j = offset+i;
       const size_t V_ij = APLCON_::V_ij(j,j);
-      var.V_ij[i] = V_ij; // store for later
+      var.V_ij[i] = V_ij; // remember for later (see covariance init below)
       V.resize(V_ij+1, 0);
-      V.back() = pow(*(var.Sigmas[i]),2);
+      V.back() = pow(*(var.Sigmas[i]),2); // last element is sigma^2
     }
   }
 
