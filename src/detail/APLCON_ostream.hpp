@@ -107,12 +107,13 @@ void stringify_covariances(
     const std::map<std::string, APLCON::Result_Variable_t>& variables,
     const std::string& in,
     F f,
+    int w_varname,
     bool skipUnmeasured,
     double factor = 1.0
     ) {
 
+  w_varname += 4;
   const int w = APLCON::PrintFormatting::Width;
-  const int w_varname = APLCON::PrintFormatting::Width;
 
   // print top line
   o << in << std::setw(w_varname) << " ";
@@ -185,6 +186,16 @@ void stringify_variables(
     const std::map<std::string, APLCON::Result_Variable_t>& variables,
     const std::string& extra_indent = "",
     const bool success = true) {
+  // do some extra work and find out the maximum length of
+  // variable names
+  size_t w_varname = 0;
+  for(const auto& it_map : variables) {
+    if(w_varname<it_map.first.size())
+      w_varname = it_map.first.size();
+  }
+  w_varname += 2;
+
+
   const int w = APLCON::PrintFormatting::Width;
   const std::string& in = extra_indent + APLCON::PrintFormatting::Indent;
   const std::string& ma = extra_indent + APLCON::PrintFormatting::Marker;
@@ -192,7 +203,7 @@ void stringify_variables(
   // print stuff before the Fit
   o << ma << "Before Fit:" << std::endl << std::endl;
   o << in
-    << std::left << std::setw(w) << "Variable" << std::right
+    << std::left << std::setw(w_varname) << "Variable" << std::right
     << std::setw(w)   << "Value"
     << std::setw(w)   << "Sigma"
     << std::left      << "   Settings" << std::right
@@ -205,7 +216,7 @@ void stringify_variables(
     else
       sigma << "unmeas";
     o << in
-      << std::left << std::setw(w) << it_map.first << std::right
+      << std::left << std::setw(w_varname) << it_map.first << std::right
       << std::setw(w) << v.Value.Before
       << std::setw(w) << sigma.str()
       << std::left << "   " << v.Settings << std::right
@@ -216,11 +227,13 @@ void stringify_variables(
   o << in << "Covariances: " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;},
+                        w_varname,
                         true);
   o << std::endl;
   o << in << "Correlations (in %): " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;},
+                        w_varname,
                         true,
                         100);
 
@@ -249,11 +262,13 @@ void stringify_variables(
   o << in << "Covariances: " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;},
+                        w_varname,
                         false);
   o << std::endl;
   o << in << "Correlations (in %): " << std::endl;
   stringify_covariances(o, variables, in,
                         [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;},
+                        w_varname,
                         false,
                         100);
 
