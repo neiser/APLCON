@@ -7,12 +7,14 @@ contains
   subroutine C_APLCON_APLCON(NVAR,MCST) bind(c)
     integer(c_int), value, intent(in) :: NVAR, MCST
     CALL APLCON(NVAR,MCST)
+    CALL FLUSH
   end subroutine C_APLCON_APLCON
 
   subroutine C_APLCON_APLOOP(X,VX,F,IRET) bind(c)
     real(c_double), dimension(*), intent(inout) :: X,VX,F
     integer(c_int), intent(out) :: IRET
     CALL APLOOP(X,VX,F,IRET)
+    CALL FLUSH
   end subroutine C_APLCON_APLOOP
 
   ! routines to obtain results
