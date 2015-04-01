@@ -112,14 +112,22 @@ public:
   // but with new name and possibly new settings
   APLCON(const APLCON& _old,
          const std::string& _name,
-         const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default)
+         const Fit_Settings_t& _fit_settings)
     : APLCON(_old)
   {
     instance_name = _name;
     fit_settings  = _fit_settings;
   }
 
+  APLCON(const APLCON& _old,
+         const std::string& _name)
+    : APLCON(_old, _name, _old.fit_settings)
+  {}
 
+  Fit_Settings_t& Settings() {
+    initialized = false;
+    return fit_settings;
+  }
 
   /**
    * @brief DoFit main routine
@@ -335,6 +343,7 @@ private:
 
   // private methods
   void Init();
+  void InitAPLCON();
   void AddVariable(const std::string& name, const double value, const double sigma,
                    const APLCON::Variable_Settings_t& settings);
 

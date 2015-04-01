@@ -389,8 +389,8 @@ void APLCON::Init()
 {
   // check if we can do some quick init
   if(initialized && instance_id == instance_lastfit) {
-    // reset APLCON for next fit
-    c_aplcon_aplcon(nVariables, nConstraints);
+    // fully init APLCON,
+    InitAPLCON();
 
     // reset the covariance matrix
     V = V_before;
@@ -607,10 +607,22 @@ void APLCON::Init()
 
   // finally we know the number of variables and constraints
   // so we can setup APLCON itself
+  InitAPLCON();
+
+
+  // save a pristine copy for later
+  V_before = V;
+
+  // remember that this instance has inited APLCON
+  initialized = true;
+  instance_lastfit = instance_id;
+}
+
+void APLCON::InitAPLCON() {
 
   c_aplcon_aplcon(nVariables, nConstraints);
 
-  c_aplcon_aprint(0,fit_settings.DebugLevel); // default output on LUNP 0 (whatever that means)
+  c_aplcon_aprint(6, fit_settings.DebugLevel); // default output on LUNP 6 (STDOUT)
   if(isfinite(fit_settings.ConstraintAccuracy))
     c_aplcon_apdeps(fit_settings.ConstraintAccuracy);
   if(fit_settings.MaxIterations>=0)
@@ -653,11 +665,4 @@ void APLCON::Init()
         c_aplcon_apstep(i, s.StepSize);
     }
   }
-
-  // save a pristine copy for later
-  V_before = V;
-
-  // remember that this instance has inited APLCON
-  initialized = true;
-  instance_lastfit = instance_id;
 }
