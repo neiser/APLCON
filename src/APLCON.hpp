@@ -129,6 +129,8 @@ public:
     return fit_settings;
   }
 
+  std::vector<std::string> VariableNames();
+
   /**
    * @brief DoFit main routine
    * @return the result of the fit, including much additional information

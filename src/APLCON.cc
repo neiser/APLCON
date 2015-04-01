@@ -246,7 +246,24 @@ APLCON::covariances_t::iterator APLCON::MakeCovarianceEntry(
   return p.first;
 }
 
+
+vector<string> APLCON::VariableNames() {
+  vector<string> variableNames;
+  for(const auto& it_map : variables) {
+    const string& name = it_map.first;
+    const variable_t& var = it_map.second;
+
+    for(size_t k=0;k<var.Values.size();k++) {
+
+      const string& varname = APLCON_::BuildVarName(name, var.Values.size(), k);
+      variableNames.push_back(varname);
+    }
+  }
+  return variableNames;
+}
+
 // Main Fit Routines
+
 
 APLCON::Result_t APLCON::DoFit()
 {
