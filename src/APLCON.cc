@@ -247,6 +247,41 @@ APLCON::covariances_t::iterator APLCON::MakeCovarianceEntry(
 }
 
 
+map< string, APLCON::Result_BeforeAfter_t< map<string, double> > >
+APLCON::CalculateCorrelations(const map<string, Result_Variable_t>& variables)
+{
+  // slow but simple implementation
+  // see covariances building in DoFit for a faster implementation
+
+  map< string, APLCON::Result_BeforeAfter_t< map<string, double> > > correlations;
+
+  for(const auto& it_map_i : variables) {
+
+    for(const auto& it_map_j : variables) {
+
+      const string& varname_i = it_map_i.first;
+      const Result_Variable_t& var_i = it_map_i.second;
+      const string& varname_j = it_map_j.first;
+      const Result_Variable_t& var_j = it_map_j.second;
+
+      const double prod_before =
+          var_i.Covariances.Before.at(varname_i) *
+          var_j.Covariances.Before.at(varname_j);
+      const double prod_after  =
+          var_i.Covariances.After.at(varname_i) *
+          var_j.Covariances.After.at(varname_j);
+
+      correlations[varname_i].Before[varname_j] =
+          var_i.Covariances.Before.at(varname_j) / sqrt(prod_before);
+
+      correlations[varname_i].After[varname_j] =
+          var_i.Covariances.After.at(varname_j) / sqrt(prod_after);
+    }
+  }
+
+  return correlations;
+}
+
 vector<string> APLCON::VariableNames() {
   vector<string> variableNames;
   for(const auto& it_map : variables) {
@@ -325,13 +360,12 @@ APLCON::Result_t APLCON::DoFit()
 
       Result_Variable_t var;
       const string& varname = APLCON_::BuildVarName(name, before.Values.size(), k);
-      var.Name = name;
+      var.PristineName = name;
       var.Dimension = before.Values.size();
       var.Index = k;
       var.Value = {*(before.Values[k]), X[i]};
 
-      // pow/sqrt of covariance is actually the only calcution the wrapper does
-      // the rest is done by APLCON...
+      // sigma is sqrt of diagonal element in V
       const size_t V_ii = APLCON_::V_ij(i,i);
       const double after_sigma = sqrt(V[V_ii]);
       var.Sigma = {*(before.Sigmas[k]), after_sigma};
@@ -343,32 +377,7 @@ APLCON::Result_t APLCON::DoFit()
       if(before.StoredSigmas.empty())
         *(before.Sigmas[k]) = after_sigma;
 
-      // copy the covariances, respecting that V is symmetrized
-      for(const auto& it_map_ : variables) {
-        const string& name_ = it_map_.first;
-        const variable_t& before_ = it_map_.second;
-
-        for(size_t k_=0;k_<before_.Values.size();k_++) {
-          size_t j = before_.XOffset+k_;
-
-          const string& varname_ = APLCON_::BuildVarName(name_, before_.Values.size(), k_);
-
-          const size_t V_ij = APLCON_::V_ij(i,j);
-          const size_t V_jj = APLCON_::V_ij(j,j);
-
-          var.Covariances.Before[varname_] = V_before[V_ij];
-          var.Covariances.After[varname_]  = V[V_ij];
-
-          // calculate the correlations,
-          // because APLCON does not provide them (only print methods available)
-          const double prod_before = V_before[V_ii] * V_before[V_jj];
-          const double prod = V[V_ii] * V[V_jj];
-          var.Correlations.Before[varname_] = V_before[V_ij]/sqrt(prod_before);
-          var.Correlations.After[varname_]  = V[V_ij]/sqrt(prod);
-        }
-      }
-
-      // anything else
+      // pulls / settings
       var.Pull = pulls[i];
       var.Settings = before.Settings[k];
 
@@ -377,6 +386,49 @@ APLCON::Result_t APLCON::DoFit()
     }
   }
 
+  // build the covariances for each variable
+  // use the symmetry of V to make it as fast as possible
+  for(auto it_zipped_i : APLCON_::index(result.Variables)) {
+
+    for(auto it_zipped_j : APLCON_::index(result.Variables)) {
+      const size_t j = it_zipped_j.first;
+      const size_t i = it_zipped_i.first;
+
+      if(i>j)
+        continue;
+
+      auto& it_map_i = it_zipped_i.second;
+      auto& it_map_j = it_zipped_j.second;
+
+      const string& varname_i = it_map_i.first;
+      Result_Variable_t& var_i = it_map_i.second;
+      const string& varname_j = it_map_j.first;
+      Result_Variable_t& var_j = it_map_j.second;
+
+      const size_t V_ij = APLCON_::V_ij(i,j);
+
+      // we use hinted insertion which improves performance by 10%
+      // correlations can be obtained
+
+      var_i.Covariances.Before.insert(var_i.Covariances.Before.end(),
+                                      make_pair(varname_j, V_before[V_ij]));
+      var_i.Covariances.After .insert(var_i.Covariances.After.end(),
+                                      make_pair(varname_j, V[V_ij]));
+      if(i == j)
+        continue;
+
+      // note that V_ij = V_ji
+
+      var_j.Covariances.Before.insert(var_j.Covariances.Before.end(),
+                                      make_pair(varname_i, V_before[V_ij]));
+      var_j.Covariances.After .insert(var_j.Covariances.After.end(),
+                                      make_pair(varname_i, V[V_ij]));
+    }
+  }
+
+
+
+  // consider linked covariances
   for(const auto& it_map : covariances) {
     const covariance_t& cov = it_map.second;
     // don't copy back internally stored values

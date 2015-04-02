@@ -69,17 +69,23 @@ public:
     T After;
   };
 
+
+
   struct Result_Variable_t {
-    std::string Name; // pristine name, i.e. without appended "[i]"
+    std::string PristineName; // pristine name, i.e. without appended "[i]"
     size_t Dimension; // dimension of vector variable, =1 for scalar variable
     size_t Index;     // index inside vector variable, =0 for scalar variable
     Result_BeforeAfter_t<double> Value;
     Result_BeforeAfter_t<double> Sigma;
     Result_BeforeAfter_t< std::map<std::string, double> > Covariances;
-    Result_BeforeAfter_t< std::map<std::string, double> > Correlations;
     double Pull;
     Variable_Settings_t Settings;
   };
+
+  // helper method to calculate correlations if needed
+  // used by the ostream<< operators, and might be useful for some users
+  static std::map< std::string, Result_BeforeAfter_t< std::map<std::string, double> > >
+  CalculateCorrelations(const std::map<std::string, Result_Variable_t>& variables);
 
   struct Result_Constraint_t {
     size_t Dimension;    // how many scalar constraints are represented by it

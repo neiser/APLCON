@@ -25,13 +25,15 @@ int main() {
   const APLCON::Result_t& ra = a.DoFit();
   cout << ra << endl;
 
-  // this shows what can access in the result structure ra
+  // this shows what can access in the result structure "ra"
+  // note that the correlations must be calculated on demand
   cout << "C's value (should be 30 due to constraint):         "
        << ra.Variables.at("C").Value.After << endl;
   cout << "C's sigma (should be 0.5 due to error propagation): "
        << ra.Variables.at("C").Sigma.After << endl;
+  const auto& correlations = APLCON::CalculateCorrelations(ra.Variables);
   cout << "Correlation between C and B:                        ";
-  cout << 100*ra.Variables.at("C").Correlations.After.at("B") << " %" << endl << endl;
+  cout << 100*correlations.at("C").After.at("B") << " %" << endl << endl;
 
   // let's try the same with Poissonian variables
   APLCON b("Poissonian error propagation");

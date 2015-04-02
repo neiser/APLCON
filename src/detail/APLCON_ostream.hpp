@@ -136,6 +136,7 @@ void stringify_covariances(
   for(const auto& it_zipped : APLCON_::index(variables)) {
     const size_t i = it_zipped.first;
     const auto& it_map = it_zipped.second;
+    const std::string varname = it_map.first;
     const APLCON::Result_Variable_t& v = it_map.second;
 
     v_variables.emplace_back(v);
@@ -147,13 +148,13 @@ void stringify_covariances(
     const size_t padding = i<10 ? 0 : 1; // breaks with more than 100 variables...
     i_ << i << ") ";
     o << in << std::setw(4-padding) << i_.str()
-      << std::left << std::setw(w_varname-4) << it_map.first << std::right;
+      << std::left << std::setw(w_varname-4) << varname << std::right;
 
-    const auto& cov = f(v);
+    const auto& cov = f(varname, v);
     for(const auto& it_zipped : APLCON_::index(cov)) {
       const size_t j = it_zipped.first;
       const auto& it_map = it_zipped.second;
-      const double& cov = it_map.second;
+      const double& cov_val = it_map.second;
 
       if(j>i)
         continue;
@@ -161,7 +162,7 @@ void stringify_covariances(
       const APLCON::Result_Variable_t& v_j = v_variables[j];
       if(skipUnmeasured && v_j.Sigma.Before == 0)
         continue;
-      o << std::setw(w) << cov*factor;
+      o << std::setw(w) << cov_val*factor;
     }
     o << std::endl;
   }
@@ -196,6 +197,9 @@ void stringify_variables(
   w_varname += 2;
 
 
+  // calculate the correlations
+  auto correlations = APLCON::CalculateCorrelations(variables);
+
   const int w = APLCON::PrintFormatting::Width;
   const std::string& in = extra_indent + APLCON::PrintFormatting::Indent;
   const std::string& ma = extra_indent + APLCON::PrintFormatting::Marker;
@@ -226,13 +230,20 @@ void stringify_variables(
 
   o << in << "Covariances: " << std::endl;
   stringify_covariances(o, variables, in,
-                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.Before;},
+                        [](const std::string&, const APLCON::Result_Variable_t& v) {
+                            return v.Covariances.Before;
+                          },
                         w_varname,
                         true);
   o << std::endl;
   o << in << "Correlations (in %): " << std::endl;
+  auto correlations_before = [&correlations]
+      (const std::string& varname,
+      const APLCON::Result_Variable_t&) {
+    return correlations[varname].Before;
+  };
   stringify_covariances(o, variables, in,
-                        [](const APLCON::Result_Variable_t& v) {return v.Correlations.Before;},
+                        correlations_before,
                         w_varname,
                         true,
                         100);
@@ -261,13 +272,20 @@ void stringify_variables(
 
   o << in << "Covariances: " << std::endl;
   stringify_covariances(o, variables, in,
-                        [](const APLCON::Result_Variable_t& v) {return v.Covariances.After;},
+                        [](const std::string&, const APLCON::Result_Variable_t& v) {
+                            return v.Covariances.After;
+                          },
                         w_varname,
                         false);
   o << std::endl;
   o << in << "Correlations (in %): " << std::endl;
+  auto correlations_after = [&correlations]
+      (const std::string& varname,
+      const APLCON::Result_Variable_t&) {
+    return correlations[varname].After;
+  };
   stringify_covariances(o, variables, in,
-                        [](const APLCON::Result_Variable_t& v) {return v.Correlations.After;},
+                        correlations_after,
                         w_varname,
                         false,
                         100);
