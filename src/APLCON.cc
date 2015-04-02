@@ -22,6 +22,7 @@ using namespace std;
 
 int APLCON::instance_counter = 0;
 int APLCON::instance_lastfit = 0;
+std::vector<APLCON::Variable_Settings_t> APLCON::DefaultSettings;
 
 const APLCON::Variable_Settings_t APLCON::Variable_Settings_t::Default = {
   APLCON::Distribution_t::Gaussian,
@@ -114,18 +115,18 @@ void APLCON::AddVariable(const string &name, const double value, const double si
 // LinkVariable methods
 
 void APLCON::LinkVariable(const string &name,
-                          const std::vector<double*> &values,
-                          const std::vector<double*> &sigmas,
-                          const std::vector<APLCON::Variable_Settings_t> &settings) {
+                          const vector<double*> &values,
+                          const vector<double*> &sigmas,
+                          const vector<APLCON::Variable_Settings_t> &settings) {
   // linked sigmas are easy
   auto it = LinkVariable(name, values, sigmas.size(), settings);
   it->second.Sigmas = sigmas;
 }
 
 void APLCON::LinkVariable(const string &name,
-                          const std::vector<double*>& values,
-                          const std::vector<double>& sigmas,
-                          const std::vector<APLCON::Variable_Settings_t> &settings) {
+                          const vector<double*>& values,
+                          const vector<double>& sigmas,
+                          const vector<APLCON::Variable_Settings_t> &settings) {
   const size_t sigmas_size = sigmas.size()==1 ? values.size() : sigmas.size();
   auto it = LinkVariable(name, values, sigmas_size, settings);
   it->second.StoredSigmas = sigmas;

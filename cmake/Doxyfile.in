@@ -688,6 +688,7 @@ FILE_PATTERNS          = *.cc \
                        *.hpp \
                        *.inc \
                        *.f90 \
+                       *.md
                        *.F
 # The RECURSIVE tag can be used to turn specify whether or not subdirectories
 # should be searched for input files as well. Possible values are YES and NO.

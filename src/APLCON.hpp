@@ -91,6 +91,12 @@ public:
     size_t Dimension;    // how many scalar constraints are represented by it
   };
 
+  /**
+   * @brief The Result_t struct
+   * Contains after the fit all information about it
+   * Variables are always referenced by their string representation,
+   * appended with [i] if they are non-scalar
+   */
   struct Result_t {
     std::string Name;
     Result_Status_t Status;
@@ -105,17 +111,26 @@ public:
     const static Result_t Default;
   };
 
-  // the usual constructor
+  /**
+   * @brief APLCON
+   * @param _name
+   * @param _fit_settings
+   * Create a new APLCON instance with a name, and optional fit settings
+   */
   APLCON(const std::string& _name,
          const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default) :
     instance_name(_name),
     initialized(false),
     instance_id(++instance_counter),
-    fit_settings(_fit_settings)
-  {}
+    fit_settings(_fit_settings) {}
 
-  // copy the instance,
-  // but with new name and possibly new settings
+
+  /**
+   * @brief APLCON
+   * @param _old instance to be copied from
+   * @param _name name of new instance
+   * @param _fit_settings new fit settings
+   */
   APLCON(const APLCON& _old,
          const std::string& _name,
          const Fit_Settings_t& _fit_settings)
@@ -125,21 +140,42 @@ public:
     fit_settings  = _fit_settings;
   }
 
+  /**
+   * @brief APLCON
+   * @param _old instance to be copied from
+   * @param _name name of new instance
+   */
   APLCON(const APLCON& _old,
          const std::string& _name)
-    : APLCON(_old, _name, _old.fit_settings)
-  {}
+    : APLCON(_old, _name, _old.fit_settings) {}
 
-  Fit_Settings_t& Settings() {
-    initialized = false;
+  /**
+   * @brief GetSettings
+   * @return settings to be obtained
+   */
+  const Fit_Settings_t& GetSettings() {
     return fit_settings;
   }
 
+  /**
+   * @brief SetSettings
+   * @param _new_settings new settings struct
+   * the fitter is un-initialized when used
+   */
+  void SetSettings(const Fit_Settings_t& _new_settings) {
+    initialized = false;
+    fit_settings = _new_settings;
+  }
+
+  /**
+   * @brief VariableNames
+   * @return vector of build variable names which have been added so far
+   */
   std::vector<std::string> VariableNames();
 
   /**
    * @brief DoFit main routine
-   * @return the result of the fit, including much additional information
+   * @return the result of the fit, including all information
    */
   Result_t DoFit();
 
@@ -148,10 +184,7 @@ public:
    * @param name unique label for variable
    * @param value initial value for variable
    * @param sigma sqrt of diagonal entry in covariance matrix
-   * @param distribution optional type of distribution
-   * @param lowerLimit lower limit of the variable's value
-   * @param upperLimit upper limit of the variable's value
-   * @param stepSize step size for numerical derivation
+   * @param settings additional settings like distribution or limits
    */
   void AddMeasuredVariable(const std::string& name,
                            const double value,
@@ -161,9 +194,7 @@ public:
    * @brief AddUnmeasuredVariable
    * @param name unique label for variable
    * @param value initial value for variable
-   * @param lowerLimit lower limit of the variable's value
-   * @param upperLimit upper limit of the variable's value
-   * @param stepSize step size for numerical derivation
+   * @param settings additional settings like distribution or limits
    */
   void AddUnmeasuredVariable(const std::string& name,
                              const double value = 0,
@@ -173,7 +204,7 @@ public:
    * @param name unique label for variable
    * @param value initial value for variable
    * @param sigma sqrt of diagonal entry in covariance matrix
-   * @param distribution optional type of distribution
+   * @param distribution optional type of distribution, default is Gaussian
    */
   void AddFixedVariable(const std::string& name,
                         const double value,
@@ -182,25 +213,54 @@ public:
       );
 
 
-
-
-
+  /**
+   * @brief LinkVariable link externally stored variable to fitter
+   * @param name unique label for variable
+   * @param values vector of double pointers, owned by user
+   * @param sigmas corresponding sigmas, provide zero for unmeasured value
+   * @param settings corresponding optional settings, provide stepsize=0 for fixed
+   */
   void LinkVariable(const std::string& name,
                     const std::vector<double*>& values,
                     const std::vector<double*>& sigmas,
-                    const std::vector<Variable_Settings_t>& settings = {}
+                    const std::vector<Variable_Settings_t>& settings = DefaultSettings
       );
+
+  /**
+   * @brief LinkVariable
+   * @param name
+   * @param values
+   * @param sigmas
+   * @param settings
+   */
   void LinkVariable(const std::string& name,
                     const std::vector<double*>& values,
                     const std::vector<double>&  sigmas,
-                    const std::vector<Variable_Settings_t>& settings = {}
+                    const std::vector<Variable_Settings_t>& settings = DefaultSettings
       );
 
-
+  /**
+   * @brief SetCovariance between to variable names
+   * @param var1 first variable name
+   * @param var2 second variable name
+   * @param covariances with correct size, see advanced example. May provide APLCON::NaN to ignore.
+   */
   void SetCovariance(const std::string& var1, const std::string& var2,
                      const std::vector<double>& covariances);
+  /**
+   * @brief SetCovariance
+   * @param var1 first variable name
+   * @param var2 second variable name
+   * @param covariance one value for two scalar variables var1 and var2
+   */
   void SetCovariance(const std::string& var1, const std::string& var2,
                      const double covariance);
+  /**
+   * @brief LinkCovariance between two variable names
+   * @param var1 first variable name
+   * @param var2 second variable name
+   * @param covariances vector of pointers with correct size (may provide nullptr to ignore)
+   */
   void LinkCovariance(const std::string& var1, const std::string& var2,
                       const std::vector<double*>& covariances);
 
@@ -208,7 +268,7 @@ public:
   /**
    * @brief AddConstraint
    * @param name unique label for the constraint
-   * @param referred variable names the constraint should act on
+   * @param varnames variable names the constraint should act on
    * @param constraint lambda function taking varnames size double arguments, and return double. Should vanish if fulfilled.
    */
   template<typename Functor>
@@ -264,16 +324,21 @@ public:
 
   // shortcuts for double limits (used in default values for methods above)
   constexpr static double NaN = std::numeric_limits<double>::quiet_NaN();
+  static std::vector<Variable_Settings_t> DefaultSettings;
 
-  // our own exception which is thrown if something's wrong
+  /**
+   * @brief The Error class
+   * Thrown if anything is not correct in the fitter setup
+   */
   class Error : public std::runtime_error {
   public:
     explicit Error(const std::string& msg) : runtime_error(msg) {}
   };
 
-  // some printout formatting stuff
-  // used in overloaded << operators
-  // may be changed to tune print formatting
+  /**
+   * @brief The PrintFormatting struct
+   * Used to modify the output of ostream<< operators for APLCON::Result_t
+   */
   struct PrintFormatting {
     static std::string Indent;
     static std::string Marker;
