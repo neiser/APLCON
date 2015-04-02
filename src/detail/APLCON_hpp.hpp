@@ -23,7 +23,7 @@ struct vectorize_if<true>  {
 template<>
 struct vectorize_if<false>  {
   static std::vector<double> get(const std::vector<double>& v) {
-    return std::move(v);
+    return v;
   }
 };
 

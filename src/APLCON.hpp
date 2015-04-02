@@ -406,12 +406,11 @@ private:
   bind_constraint(std::enable_if<true>,  // wants double
                   std::enable_if<false>, // does not want vector
                   const F& f, APLCON_::indices<I...>) const {
-    auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+    return [f] (const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // dereference the single element inside the inner vector
       // return vector with single element
       return APLCON_::vectorize_if<R>::get(f(*(x[I][0])...));
     };
-    return std::bind(f_wrap, f, std::placeholders::_1);
   }
 
   template <bool R, typename F, size_t... I>
@@ -419,7 +418,7 @@ private:
   bind_constraint(std::enable_if<false>, // does not want double
                   std::enable_if<true>,  // wants vector
                   const F& f, APLCON_::indices<I...>) const {
-    auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+    return [f] (const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // this might be a little bit inefficient,
       // since we need to allocate the space for the dereferenced double values
       // but well, the constraints then look easier
@@ -433,7 +432,6 @@ private:
       }
       return APLCON_::vectorize_if<R>::get(f(std::move(x_[I])...));
     };
-    return std::bind(f_wrap, f, std::placeholders::_1);
   }
 
   template <bool R, typename F, size_t... I>
@@ -441,7 +439,7 @@ private:
   bind_constraint(std::enable_if<false>, // does not want double
                   std::enable_if<false>, // does not want vector, so wants matrix!
                   const F& f, APLCON_::indices<I...>) const {
-    auto f_wrap = [] (const F& f, const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
+    return [f] (const std::vector< std::vector<const double*> >& x) -> std::vector<double> {
       // this might be a little bit inefficient,
       // since we need to allocate the space for the dereferenced double values
       // but well, the constraints then look easier
@@ -455,7 +453,6 @@ private:
       }
       return APLCON_::vectorize_if<R>::get(f(x_));
     };
-    return std::bind(f_wrap, f, std::placeholders::_1);
   }
 
 };
