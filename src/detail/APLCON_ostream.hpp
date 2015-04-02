@@ -21,6 +21,8 @@ int APLCON::PrintFormatting::Width = 13;
 
 // some helper string stream which copies the
 // formatting "settings" of the given base stream
+namespace APLCON_ {
+
 class mystringstream : public std::stringstream {
 public:
   mystringstream(const std::ios_base& base) :
@@ -29,6 +31,8 @@ public:
     flags(base.flags());
   }
 };
+
+} // namespace APLCON_
 
 std::ostream& operator<< (std::ostream& o, const APLCON::Limit_t& l) {
   if(!std::isfinite(l.Low) && !std::isfinite(l.High)) {
@@ -87,9 +91,9 @@ std::ostream& operator<< (std::ostream& o, const APLCON::Result_Status_t& s) {
 }
 
 std::ostream& operator<< (std::ostream& o, const APLCON::Variable_Settings_t& s) {
-  mystringstream limit(o); // inherit the format properties of o
+  APLCON_::mystringstream limit(o); // inherit the format properties of o
   limit << s.Limit;
-  mystringstream stepsize(o); // inherit the format properties of o
+  APLCON_::mystringstream stepsize(o); // inherit the format properties of o
   if(std::isfinite(s.StepSize))
     stepsize << s.StepSize;
   else
@@ -214,7 +218,7 @@ void stringify_variables(
     << std::endl;
   for(const auto& it_map : variables) {
     const APLCON::Result_Variable_t& v = it_map.second;
-    mystringstream sigma(o);
+    APLCON_::mystringstream sigma(o);
     if(v.Sigma.Before != 0)
       sigma << v.Sigma.Before;
     else

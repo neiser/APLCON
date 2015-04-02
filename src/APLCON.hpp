@@ -15,8 +15,8 @@
 /**
  * @brief The APLCON class
  * Provides a C++11'ish wrapper around
- * V.Blobel's FORTRAN APLCON constrained least squares fitter
- * see http://www.desy.de/~blobel/wwwcondl.html for details of the original FORTRAN code
+ * V.Blobel's constrained least squares fitter written in Fortran.
+ * See http://www.desy.de/~blobel/wwwcondl.html for details of the original FORTRAN code.
  */
 
 class APLCON
@@ -69,8 +69,6 @@ public:
     T After;
   };
 
-
-
   struct Result_Variable_t {
     std::string PristineName; // pristine name, i.e. without appended "[i]"
     size_t Dimension; // dimension of vector variable, =1 for scalar variable
@@ -93,9 +91,9 @@ public:
 
   /**
    * @brief The Result_t struct
-   * Contains after the fit all information about it
+   * Contains after the fit all information about it.
    * Variables are always referenced by their string representation,
-   * appended with [i] if they are non-scalar
+   * appended with [i] if they are non-scalar.
    */
   struct Result_t {
     std::string Name;
@@ -112,10 +110,10 @@ public:
   };
 
   /**
-   * @brief APLCON
+   * Create a new APLCON instance with a name, and optional fit settings.
+   * @brief APLCON default constructor
    * @param _name
    * @param _fit_settings
-   * Create a new APLCON instance with a name, and optional fit settings
    */
   APLCON(const std::string& _name,
          const Fit_Settings_t& _fit_settings = Fit_Settings_t::Default) :
@@ -126,7 +124,8 @@ public:
 
 
   /**
-   * @brief APLCON
+   * Copy APLCON instance from an existing one with new name and new settings
+   * @brief APLCON copy constructor
    * @param _old instance to be copied from
    * @param _name name of new instance
    * @param _fit_settings new fit settings
@@ -141,7 +140,8 @@ public:
   }
 
   /**
-   * @brief APLCON
+   * Copy APLCON instance from an existing one with new name
+   * @brief APLCON copy constructor
    * @param _old instance to be copied from
    * @param _name name of new instance
    */
@@ -158,9 +158,9 @@ public:
   }
 
   /**
+   * @note the fitter is un-initialized after the call of this method
    * @brief SetSettings
    * @param _new_settings new settings struct
-   * the fitter is un-initialized when used
    */
   void SetSettings(const Fit_Settings_t& _new_settings) {
     initialized = false;
