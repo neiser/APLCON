@@ -1,4 +1,4 @@
-
+      PROGRAM AVMAIN
 
 *     avmain.F - main program for averaging examples
 
