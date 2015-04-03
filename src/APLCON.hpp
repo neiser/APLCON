@@ -23,6 +23,9 @@ class APLCON
 {
 public:
 
+   /**
+   * @brief The Fit_Settings_t struct. See APLCON itself for details.
+   */
   struct Fit_Settings_t {
     int DebugLevel;
     int MaxIterations;
@@ -33,18 +36,28 @@ public:
     const static Fit_Settings_t Default;
   };
 
+  /**
+   * @brief The Distribution_t enum
+   * @see Variable_Settings_t
+   */
   enum class Distribution_t {
-    Gaussian,
-    Poissonian,
-    LogNormal,
-    SquareRoot
+    Gaussian, /**< Gaussian distributed variable (default) */
+    Poissonian, /**< Poissonian distributed variable */
+    LogNormal, /**< Ratios are lognormal distributed */
+    SquareRoot /**< SquareRoot transformation */
   };
 
+  /**
+   * @brief The Limit_t struct defines upper and lower limits
+   */
   struct Limit_t {
     double Low;
     double High;
   };
 
+  /**
+   * @brief The Variable_Settings_t struct contains settings per variable
+   */
   struct Variable_Settings_t {
     Distribution_t Distribution;
     Limit_t Limit;
@@ -52,27 +65,37 @@ public:
     const static Variable_Settings_t Default;
   };
 
-  // the order must correspond to APLCON's status number (see APLCON README)
+  /**
+   * @brief The Result_Status_t enum encodes APLCON's status after fit
+   * @note the order must correspond to APLCON's status number (see APLCON README)
+   */
   enum class Result_Status_t : int {
-    Success,
-    NoConvergence,
-    TooManyIterations,
-    UnphysicalValues,
-    NegativeDoF,
-    OutOfMemory,
+    Success, /**< Fit was successful, result is meaningful */
+    NoConvergence, /**< No convergence reached */
+    TooManyIterations, /**< Too many iterations needed with no convergence */
+    UnphysicalValues, /**< Unphysical values encountered during fit */
+    NegativeDoF, /**< Negative degrees of freedom */
+    OutOfMemory, /**< Not sufficient memory for fit */
     _Unknown // default in Result_t, also used to count items
   };
 
+  /**
+   * @brief The Result_BeforeAfter_t struct wraps information before and after the fit
+   * @see Result_Variable_t
+   */
   template<typename T>
   struct Result_BeforeAfter_t {
     T Before;
     T After;
   };
 
+  /**
+   * @brief The Result_Variable_t struct contains the fit result per variable
+   */
   struct Result_Variable_t {
-    std::string PristineName; // pristine name, i.e. without appended "[i]"
-    size_t Dimension; // dimension of vector variable, =1 for scalar variable
-    size_t Index;     // index inside vector variable, =0 for scalar variable
+    std::string PristineName; /**< pristine name, i.e. without appended "[i]" */
+    size_t Dimension; /**< dimension of vector variable, =1 for scalar variable */
+    size_t Index;     /**< index inside vector variable, =0 for scalar variable */
     Result_BeforeAfter_t<double> Value;
     Result_BeforeAfter_t<double> Sigma;
     Result_BeforeAfter_t< std::map<std::string, double> > Covariances;
@@ -80,18 +103,25 @@ public:
     Variable_Settings_t Settings;
   };
 
-  // helper method to calculate correlations if needed
-  // used by the ostream<< operators, and might be useful for some users
+  /**
+   * @brief helper method to calculate correlations from covariances
+   * @note used by the ostream<< operators, and might be useful for some users
+   * @param variables from Result_t
+   * @return correlations between stringified variables, before and after fit
+   */
   static std::map< std::string, Result_BeforeAfter_t< std::map<std::string, double> > >
   CalculateCorrelations(const std::map<std::string, Result_Variable_t>& variables);
 
+  /**
+   * @brief The Result_Constraint_t struct contains constraint information
+   */
   struct Result_Constraint_t {
     size_t Dimension;    // how many scalar constraints are represented by it
   };
 
   /**
-   * @brief The Result_t struct
-   * Contains after the fit all information about it.
+   * @brief The Result_t struct contains
+   * after the fit all information about it.
    * Variables are always referenced by their string representation,
    * appended with [i] if they are non-scalar.
    */
@@ -110,8 +140,7 @@ public:
   };
 
   /**
-   * Create a new APLCON instance with a name, and optional fit settings.
-   * @brief APLCON default constructor
+   * @brief Create new APLCON instance with a name, and optional fit settings
    * @param _name
    * @param _fit_settings
    */
@@ -122,10 +151,8 @@ public:
     instance_id(++instance_counter),
     fit_settings(_fit_settings) {}
 
-
   /**
-   * Copy APLCON instance from an existing one with new name and new settings
-   * @brief APLCON copy constructor
+   * @brief Copy instance from an existing one with new name and new settings
    * @param _old instance to be copied from
    * @param _name name of new instance
    * @param _fit_settings new fit settings
@@ -140,8 +167,7 @@ public:
   }
 
   /**
-   * Copy APLCON instance from an existing one with new name
-   * @brief APLCON copy constructor
+   * @brief Copy instance from an existing one with new name
    * @param _old instance to be copied from
    * @param _name name of new instance
    */
@@ -150,7 +176,7 @@ public:
     : APLCON(_old, _name, _old.fit_settings) {}
 
   /**
-   * @brief GetSettings
+   * @brief Obtain current fitter settings
    * @return settings to be obtained
    */
   const Fit_Settings_t& GetSettings() {
@@ -158,9 +184,9 @@ public:
   }
 
   /**
-   * @note the fitter is un-initialized after the call of this method
-   * @brief SetSettings
+   * @brief Set given fitter settings
    * @param _new_settings new settings struct
+   * @note the fitter is un-initialized after the call of this method
    */
   void SetSettings(const Fit_Settings_t& _new_settings) {
     initialized = false;
@@ -168,19 +194,20 @@ public:
   }
 
   /**
-   * @brief VariableNames
+   * @brief Obtain variable names
    * @return vector of build variable names which have been added so far
    */
   std::vector<std::string> VariableNames();
 
   /**
-   * @brief DoFit main routine
+   * @brief Main routine of the fitter
    * @return the result of the fit, including all information
    */
   Result_t DoFit();
 
   /**
-   * @brief AddMeasuredVariable
+   * @brief Add measured variable to fitter with given sigma, internally stored
+   * @see LinkVariable for linking externally stored values
    * @param name unique label for variable
    * @param value initial value for variable
    * @param sigma sqrt of diagonal entry in covariance matrix
@@ -191,7 +218,7 @@ public:
                            const double sigma,
                            const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
-   * @brief AddUnmeasuredVariable
+   * @brief Add unmeasured value to fitter which has vanishing sigma
    * @param name unique label for variable
    * @param value initial value for variable
    * @param settings additional settings like distribution or limits
@@ -200,7 +227,7 @@ public:
                              const double value = 0,
                              const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
-   * @brief AddFixedVariable
+   * @brief Add a fixed variable to fitter
    * @param name unique label for variable
    * @param value initial value for variable
    * @param sigma sqrt of diagonal entry in covariance matrix
@@ -214,7 +241,7 @@ public:
 
 
   /**
-   * @brief LinkVariable link externally stored variable to fitter
+   * @brief Link externally stored variable to fitter
    * @param name unique label for variable
    * @param values vector of double pointers, owned by user
    * @param sigmas corresponding sigmas, provide zero for unmeasured value
@@ -240,23 +267,25 @@ public:
       );
 
   /**
-   * @brief SetCovariance between to variable names
+   * @brief Set covariance between to variable names
    * @param var1 first variable name
    * @param var2 second variable name
    * @param covariances with correct size, see advanced example. May provide APLCON::NaN to ignore.
    */
   void SetCovariance(const std::string& var1, const std::string& var2,
                      const std::vector<double>& covariances);
+
   /**
-   * @brief SetCovariance
+   * @brief Set covariance between two scalar variables
    * @param var1 first variable name
    * @param var2 second variable name
    * @param covariance one value for two scalar variables var1 and var2
    */
   void SetCovariance(const std::string& var1, const std::string& var2,
                      const double covariance);
+
   /**
-   * @brief LinkCovariance between two variable names
+   * @brief Link covariance value between two variable names
    * @param var1 first variable name
    * @param var2 second variable name
    * @param covariances vector of pointers with correct size (may provide nullptr to ignore)
@@ -266,7 +295,7 @@ public:
 
 
   /**
-   * @brief AddConstraint
+   * @brief Add named constraint to the fitter depending on given variables
    * @param name unique label for the constraint
    * @param varnames variable names the constraint should act on
    * @param constraint lambda function taking varnames size double arguments, and return double. Should vanish if fulfilled.
@@ -323,12 +352,11 @@ public:
   }
 
   // shortcuts for double limits (used in default values for methods above)
-  constexpr static double NaN = std::numeric_limits<double>::quiet_NaN();
-  static std::vector<Variable_Settings_t> DefaultSettings;
+  constexpr static double NaN = std::numeric_limits<double>::quiet_NaN(); /**< short cut for NaN value */
+  static std::vector<Variable_Settings_t> DefaultSettings; /**< short cut for empty variable settings */
 
   /**
-   * @brief The Error class
-   * Thrown if anything is not correct in the fitter setup
+   * @brief The Error class is thrown if anything is not correct in the fitter setup
    */
   class Error : public std::runtime_error {
   public:
@@ -336,8 +364,7 @@ public:
   };
 
   /**
-   * @brief The PrintFormatting struct
-   * Used to modify the output of ostream<< operators for APLCON::Result_t
+   * @brief The PrintFormatting struct tunes the output of ostream<< operators for APLCON::Result_t
    */
   struct PrintFormatting {
     static std::string Indent;
