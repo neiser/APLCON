@@ -99,7 +99,8 @@ struct function_traits<R(C::*)(Args...) const> : public function_traits<R(Args..
 template<class C, class R>
 struct function_traits<R(C::*)> : public function_traits<R(C&)> {};
 
-
+// hide it from doxygen to prevent meaningless recursion warning
+/// @cond
 // this little template fun is called "pack of indices"
 // it enables the nice definition of constraints via AddConstraint(...) method
 // see http://stackoverflow.com/a/11044592
@@ -112,7 +113,7 @@ struct build_indices : build_indices<N-1, N-1, Is...> {};
 
 template <std::size_t... Is>
 struct build_indices<0, Is...> : indices<Is...> {};
-
+/// @endcond
 
 } // end namespace APLCON_
 

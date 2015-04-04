@@ -13,8 +13,9 @@
 #include <vector>
 
 /**
- * @brief The APLCON class
- * Provides a C++11'ish wrapper around
+ * @brief The APLCON C++11 wrapper class
+ *
+ * It provides a C++11'ish wrapper around
  * V.Blobel's constrained least squares fitter written in Fortran.
  * See http://www.desy.de/~blobel/wwwcondl.html for details of the original FORTRAN code.
  */
@@ -548,6 +549,11 @@ private:
   }
 
 };
+
+/** @example src/example/00_verysimple.cc */
+/** @example src/example/01_simple.cc */
+/** @example src/example/02_linker.cc */
+/** @example src/example/03_advanced.cc */
 
 std::ostream& operator<< (std::ostream&, const APLCON::Limit_t&);
 std::ostream& operator<< (std::ostream&, const APLCON::Distribution_t&);
