@@ -523,7 +523,7 @@ private:
                        [] (const double* v) { return *v; }
         );
       }
-      return APLCON_::vectorize_if<R>::get(f(std::move(x_[I])...));
+      return APLCON_::vectorize_if<R>::get(f(x_[I]...));
     };
   }
 

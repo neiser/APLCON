@@ -224,7 +224,7 @@ int main() {
     vector<double*> vp;
     vp.resize(v.size());
     transform(v.begin(),v.end(),vp.begin(), [] (double& d) {return addressof(d);});
-    return move(vp);
+    return vp;
   };
   b.LinkCovariance("Vec1", "Vec1", link_vector(linked_covariance_vec1_vec1));
 
