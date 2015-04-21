@@ -3,7 +3,15 @@
 APLCON++ is a C++11 wrapper class around the Constrained Least Squares
 fitter APLCON by Volker Blobel. Please <a href="http://www.desy.de/~blobel/wwwcondl.html">see 
 his DESY homepage how APLCON works</a>. Also, if you use this wrapper 
-in a publication, don't forget to cite Blobel's original work.
+in a publication, don't forget to cite Volker Blobel's original work:
+
+```latex
+\bibitem{bib:blolo} 
+Volker Blobel and Erich Lohrmann, 
+\emph{Statistische Methoden der Datenanalyse}, 
+Teubner Studienb\"{u}cher, Teubner (1998); 
+e-book \url{http://www.desy.de/~blobel/eBuch.pdf}
+```
 
 Please report bugs and improvements!
 
