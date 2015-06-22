@@ -193,7 +193,8 @@ void stringify_variables(
     const bool success = true) {
   // do some extra work and find out the maximum length of
   // variable names
-  size_t w_varname = 0;
+  const int w = APLCON::PrintFormatting::Width;  
+  size_t w_varname = w;
   for(const auto& it_map : variables) {
     if(w_varname<it_map.first.size())
       w_varname = it_map.first.size();
@@ -204,7 +205,6 @@ void stringify_variables(
   // calculate the correlations
   auto correlations = APLCON::CalculateCorrelations(variables);
 
-  const int w = APLCON::PrintFormatting::Width;
   const std::string& in = extra_indent + APLCON::PrintFormatting::Indent;
   const std::string& ma = extra_indent + APLCON::PrintFormatting::Marker;
 
