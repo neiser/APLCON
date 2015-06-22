@@ -44,4 +44,7 @@ target_link_libraries(APLCON_example_02 aplcon++)
 add_executable(APLCON_example_03 src/example/03_advanced.cc)
 target_link_libraries(APLCON_example_03 aplcon++)
 
+add_executable(APLCON_example_04 src/example/04_linefit.cc)
+target_link_libraries(APLCON_example_04 aplcon++)
+
 include(cmake/doxygen.cmake)
