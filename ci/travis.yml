@@ -1,0 +1,21 @@
+language: cpp
+
+compiler:
+- gcc
+
+sudo: false
+
+addons:
+  apt:
+    packages:
+    - build-essential
+    - gfortran
+
+cache:
+  directories:
+  - "$HOME/cache"
+
+script: "./ci/build.sh"
+
+after_success:
+  - "./ci/upload-coverage.sh"

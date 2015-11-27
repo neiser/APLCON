@@ -1,3 +1,6 @@
+[![Build status master branch](https://travis-ci.org/A2-Collaboration-dev/APLCON.svg?branch=master)](https://travis-ci.org/A2-Collaboration-dev/APLCON)
+[![Codecov status master branch](https://codecov.io/github/A2-Collaboration-dev/APLCON/coverage.svg?branch=master)](https://codecov.io/github/A2-Collaboration-dev/APLCON?branch=master)
+
 # APLCON C++11 wrapper {#mainpage}
 
 APLCON++ is a C++11 wrapper class around the Constrained Least Squares
