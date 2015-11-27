@@ -47,4 +47,6 @@ target_link_libraries(APLCON_example_03 aplcon++)
 add_executable(APLCON_example_04 src/example/04_linefit.cc)
 target_link_libraries(APLCON_example_04 aplcon++)
 
+add_subdirectory(test)
+
 include(cmake/doxygen.cmake)

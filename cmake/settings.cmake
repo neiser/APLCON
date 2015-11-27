@@ -21,3 +21,9 @@ endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE)
 set(DEFAULT_CXX_COMPILE_FLAGS ${CMAKE_CXX_FLAGS_${BUILD_TYPE}})
 set(DEFAULT_Fortran_COMPILE_FLAGS ${CMAKE_Fortran_FLAGS_${BUILD_TYPE}})
+
+enable_testing()
+# use some concurrency for tests
+if(NOT CTEST_PARALLEL_JOBS)
+  set(CTEST_PARALLEL_JOBS 2)
+endif()
