@@ -20,3 +20,4 @@ endmacro()
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
 add_aplcon_test(VerySimple)
+add_aplcon_test(Simple)
