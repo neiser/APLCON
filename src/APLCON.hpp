@@ -177,10 +177,18 @@ public:
     : APLCON(_old, _name, _old.fit_settings) {}
 
   /**
+   * @brief Get the Name of this APLCON instance
+   * @return the name
+   */
+  std::string GetName() const {
+      return instance_name;
+  }
+
+  /**
    * @brief Obtain current fitter settings
    * @return settings to be obtained
    */
-  const Fit_Settings_t& GetSettings() {
+  const Fit_Settings_t& GetSettings() const {
     return fit_settings;
   }
 
