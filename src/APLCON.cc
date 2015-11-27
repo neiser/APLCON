@@ -135,6 +135,19 @@ void APLCON::LinkVariable(const string &name,
   }
 }
 
+void APLCON::LinkVariable(const string& name,
+                          const std::vector<double*>& values,
+                          const std::vector<double*>& sigmas,
+                          const std::vector<double*>& pulls,
+                          const std::vector<APLCON::Variable_Settings_t>& settings) {
+  if(values.size() != pulls.size()) {
+    throw Error("Pulls size does not match number of provided values");
+  }
+  auto it = LinkVariable(name, values, sigmas.size(), settings);
+  it->second.Sigmas = sigmas;
+  it->second.Pulls = pulls;
+}
+
 APLCON::variables_t::iterator APLCON::LinkVariable(
     const string &name,
     const std::vector<double*>& values,
@@ -377,6 +390,8 @@ APLCON::Result_t APLCON::DoFit()
         *(before.Values[k]) = X[i];
       if(before.StoredSigmas.empty())
         *(before.Sigmas[k]) = after_sigma;
+      if(!before.Pulls.empty())
+        *(before.Pulls[k]) = pulls[i];
 
       // pulls / settings
       var.Pull = pulls[i];

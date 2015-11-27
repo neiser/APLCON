@@ -268,6 +268,21 @@ public:
       );
 
   /**
+   * @brief LinkVariable with values, sigmas and pulls
+   * @param name unique label for variable
+   * @param values starting values, overwritten by result after DoFit()
+   * @param sigmas pointers to uncertainties, provide zero for unmeasured
+   * @param pulls designated output for pulls after DoFit() (given values are ignored/overwritten)
+   * @param settings optional settings for each variable
+   */
+  void LinkVariable(const std::string& name,
+                    const std::vector<double*>& values,
+                    const std::vector<double*>& sigmas,
+                    const std::vector<double*>& pulls,
+                    const std::vector<Variable_Settings_t>& settings = DefaultSettings
+      );
+
+  /**
    * @brief Set covariance between to variable names
    * @param var1 first variable name
    * @param var2 second variable name
@@ -384,6 +399,7 @@ private:
   struct variable_t {
     std::vector<double*> Values;
     std::vector<double*> Sigmas;
+    std::vector<double*> Pulls;
     std::vector<Variable_Settings_t> Settings;
     // storage for non-linked variables
     // see AddVariable/LinkVariable for usage
