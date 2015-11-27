@@ -255,11 +255,11 @@ public:
       );
 
   /**
-   * @brief LinkVariable
-   * @param name
-   * @param values
-   * @param sigmas
-   * @param settings
+   * @brief LinkVariable with values only, sigmas are internally stored
+   * @param name unique label for variable
+   * @param values vector of double pointers, owned by user
+   * @param sigmas vector of double values, managed by APLCON instance
+   * @param settings optional settings
    */
   void LinkVariable(const std::string& name,
                     const std::vector<double*>& values,
