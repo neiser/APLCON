@@ -61,6 +61,11 @@ void c_aplcon_aprint(const int LUNP, const int IPR);
  */
 void c_aplcon_apdeps(const double EPSF);
 /**
+ * @brief Setup chi2 accuracy
+ * @param EPSCHI chi2 accuracy
+ */
+void c_aplcon_apepschi(const double EPSCHI);
+/**
  * @brief Setup measured stepsize factor
  * @param DERFAC measured stepsize factor
  */

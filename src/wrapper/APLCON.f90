@@ -81,6 +81,11 @@ contains
     CALL APDEPS(EPSF)
   end subroutine C_APLCON_APDEPS
 
+  subroutine C_APLCON_APEPSCHI(EPSCHI) bind(c)
+    real(c_double), value, intent(in) :: EPSCHI
+    CALL APEPSCHI(EPSCHI)
+  end subroutine C_APLCON_APEPSCHI
+
   subroutine C_APLCON_APDERF(DERFAC) bind(c)
     real(c_double), value, intent(in) :: DERFAC
     CALL APDERF(DERFAC)
