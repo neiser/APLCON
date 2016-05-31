@@ -31,6 +31,7 @@ public:
     int DebugLevel;
     int MaxIterations;
     double ConstraintAccuracy;
+    double Chi2Accuracy;
     double MeasuredStepSizeFactor;
     double UnmeasuredStepSizeFactor;
     double MinimalStepSizeFactor;

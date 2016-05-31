@@ -37,10 +37,11 @@ const APLCON::Variable_Settings_t APLCON::Variable_Settings_t::Default = {
 const APLCON::Fit_Settings_t APLCON::Fit_Settings_t::Default = {
   0,  // no debug printout from APLCON
   -1, // max iterations
-  APLCON::NaN,
-  APLCON::NaN,
-  APLCON::NaN,
-  APLCON::NaN
+  APLCON::NaN, // ConstraintAccuracy
+  APLCON::NaN, // Chi2Accuracy
+  APLCON::NaN, // MeasuredStepSizeFactor
+  APLCON::NaN, // UnmeasuredStepSizeFactor
+  APLCON::NaN  // MinimalStepSizeFactor
 };
 
 // proper default result
@@ -711,6 +712,8 @@ void APLCON::InitAPLCON() {
   c_aplcon_aprint(6, fit_settings.DebugLevel); // default output on LUNP 6 (STDOUT)
   if(isfinite(fit_settings.ConstraintAccuracy))
     c_aplcon_apdeps(fit_settings.ConstraintAccuracy);
+  if(isfinite(fit_settings.Chi2Accuracy))
+    c_aplcon_apepschi(fit_settings.Chi2Accuracy);
   if(fit_settings.MaxIterations>=0)
     c_aplcon_apiter(fit_settings.MaxIterations);
   if(isfinite(fit_settings.MeasuredStepSizeFactor))
