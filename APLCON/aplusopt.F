@@ -22,6 +22,10 @@
       EPSF  =ARG        ! |F| accuracy
       RETURN
 *     __________________________________________________________________
+      ENTRY APEPSCHI(ARG)               ! chi2 accuracy
+      EPSCHI=ARG        
+      RETURN      
+*     __________________________________________________________________
       ENTRY APDERF(ARG)                 ! factor for step definition
       DERFAC=ARG
       RETURN

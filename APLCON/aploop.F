@@ -36,6 +36,7 @@ c     IPR=5               ! default print flag is 5
       DERUFC=1.0D-5       ! factor or unmeasured variable
       DERLOW=1.0D-2       ! factor for lower limit
       EPSF  =1.0D-6       ! accuracy limit
+      EPSCHI=0.1D-4       ! chi2 accuracy limit      
       ITERMX=100          ! max number of iterations
       ITERMX=50
       ITERMX=20
@@ -736,9 +737,8 @@ c      WRITE(*,*) 'Weight=',WEIGHT
 
       SUBROUTINE ANTEST(IRET)      ! test convergence
 #include "comcfit.inc"
-      DOUBLE PRECISION EPSCHI,CM(14)
+      DOUBLE PRECISION CM(14)
 *     ....
-      EPSCHI=0.1D-4
       IRET=-1                      ! calculate new Jacobian  
       IUNPH=0   
 *     __________________________________________________________________
