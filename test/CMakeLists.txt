@@ -4,7 +4,7 @@ add_custom_target(build_and_test
   COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -j${CTEST_PARALLEL_JOBS}
   COMMENT "Running build_and_test with ${CTEST_PARALLEL_JOBS} workers"
   )
-add_library(catch catch.cc catch.hpp)
+add_library(catch EXCLUDE_FROM_ALL catch.cc catch.hpp)
 target_link_libraries(catch)
 
 macro(add_aplcon_test name)
