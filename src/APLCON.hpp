@@ -35,6 +35,7 @@ public:
     double MeasuredStepSizeFactor;
     double UnmeasuredStepSizeFactor;
     double MinimalStepSizeFactor;
+    bool   SkipCovariancesInResult;
     const static Fit_Settings_t Default;
   };
 

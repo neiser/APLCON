@@ -41,7 +41,8 @@ const APLCON::Fit_Settings_t APLCON::Fit_Settings_t::Default = {
   APLCON::NaN, // Chi2Accuracy
   APLCON::NaN, // MeasuredStepSizeFactor
   APLCON::NaN, // UnmeasuredStepSizeFactor
-  APLCON::NaN  // MinimalStepSizeFactor
+  APLCON::NaN, // MinimalStepSizeFactor
+  false,       // SkipCovariancesInResult
 };
 
 // proper default result
@@ -362,6 +363,15 @@ APLCON::Result_t APLCON::DoFit()
   vector<double> pulls(X.size());
   c_aplcon_appull(pulls.data());
 
+  // copy just the names of the constraints
+  for(const auto& it_map : constraints) {
+    Result_Constraint_t r_con;
+    r_con.Dimension = it_map.second.Number;
+    result.Constraints[it_map.first] = r_con;
+  }
+  result.NScalarConstraints = nConstraints;
+  result.Name = instance_name;
+
   // now we're ready to fill the result.Variables vector
   // we fill it in the same order as the X vector
   // which makes debug output from  APLCON comparable to dumps of this structure
@@ -402,6 +412,9 @@ APLCON::Result_t APLCON::DoFit()
       result.Variables[varname] = var;
     }
   }
+
+  if(fit_settings.SkipCovariancesInResult)
+      return result;
 
   // build the covariances for each variable
   // use the symmetry of V to make it as fast as possible
@@ -460,14 +473,6 @@ APLCON::Result_t APLCON::DoFit()
     }
   }
 
-  // copy just the names of the constraints
-  for(const auto& it_map : constraints) {
-    Result_Constraint_t r_con;
-    r_con.Dimension = it_map.second.Number;
-    result.Constraints[it_map.first] = r_con;
-  }
-  result.NScalarConstraints = nConstraints;
-  result.Name = instance_name;
   return result;
 }
 
