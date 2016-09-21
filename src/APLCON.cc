@@ -280,6 +280,11 @@ APLCON::CalculateCorrelations(const map<string, Result_Variable_t>& variables)
       const string& varname_j = it_map_j.first;
       const Result_Variable_t& var_j = it_map_j.second;
 
+      if(var_i.Covariances.Before.count(varname_i) == 0)
+          continue;
+      if(var_j.Covariances.Before.count(varname_j) == 0)
+          continue;
+
       const double prod_before =
           var_i.Covariances.Before.at(varname_i) *
           var_j.Covariances.Before.at(varname_j);
