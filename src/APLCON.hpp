@@ -225,8 +225,8 @@ public:
    * @param settings additional settings like distribution or limits
    */
   void AddMeasuredVariable(const std::string& name,
-                           const double value,
-                           const double sigma,
+                           double value,
+                           double sigma,
                            const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief Add unmeasured value to fitter which has vanishing sigma
@@ -235,7 +235,7 @@ public:
    * @param settings additional settings like distribution or limits
    */
   void AddUnmeasuredVariable(const std::string& name,
-                             const double value = 0,
+                             double value = 0,
                              const Variable_Settings_t &settings = Variable_Settings_t::Default);
   /**
    * @brief Add a fixed variable to fitter
@@ -245,8 +245,8 @@ public:
    * @param distribution optional type of distribution, default is Gaussian
    */
   void AddFixedVariable(const std::string& name,
-                        const double value,
-                        const double sigma,
+                        double value,
+                        double sigma,
                         const Distribution_t& distribution = Distribution_t::Gaussian
       );
 
@@ -308,7 +308,7 @@ public:
    * @param covariance one value for two scalar variables var1 and var2
    */
   void SetCovariance(const std::string& var1, const std::string& var2,
-                     const double covariance);
+                     double covariance);
 
   /**
    * @brief Link covariance value between two variable names
