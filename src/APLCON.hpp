@@ -208,7 +208,7 @@ public:
    * @brief Obtain variable names
    * @return vector of build variable names which have been added so far
    */
-  std::vector<std::string> VariableNames();
+  std::vector<std::string> VariableNames() const;
 
   /**
    * @brief Main routine of the fitter

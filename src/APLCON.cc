@@ -303,7 +303,7 @@ APLCON::CalculateCorrelations(const map<string, Result_Variable_t>& variables)
   return correlations;
 }
 
-vector<string> APLCON::VariableNames() {
+vector<string> APLCON::VariableNames() const {
   vector<string> variableNames;
   for(const auto& it_map : variables) {
     const string& name = it_map.first;
